@@ -1,0 +1,31 @@
+# Binaries
+/pxon
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Build output
+/bin/
+/dist/
+/build/
+
+# Coverage and profiling
+*.out
+coverage.out
+cover.out
+cpu.out
+mem.out
+
+# Go workspace files
+go.work
+go.work.sum
+
+# OS files
+.DS_Store
+
+# Editor settings
+.idea/
+.vscode/
