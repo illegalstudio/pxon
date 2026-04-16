@@ -13,10 +13,26 @@ import (
 var ErrConfigNotLoaded = errors.New("configuration not loaded")
 
 type Config struct {
-	Endpoint    string `mapstructure:"endpoint"`
-	TokenID     string `mapstructure:"token_id"`
-	TokenSecret string `mapstructure:"token_secret"`
-	Insecure    bool   `mapstructure:"insecure"`
+	Endpoint        string        `mapstructure:"endpoint"`
+	TokenID         string        `mapstructure:"token_id"`
+	TokenSecret     string        `mapstructure:"token_secret"`
+	Insecure        bool          `mapstructure:"insecure"`
+	DefaultStorage  string        `mapstructure:"default_storage"`
+	DefaultImage    string        `mapstructure:"default_image"`
+	DefaultDiskSize string        `mapstructure:"default_disk_size"`
+	DefaultPassword string        `mapstructure:"default_password"`
+	DefaultNet0     string        `mapstructure:"default_net0"`
+	Network         NetworkConfig `mapstructure:"network"`
+}
+
+type NetworkConfig struct {
+	Mode       string `mapstructure:"mode"`
+	Bridge     string `mapstructure:"bridge"`
+	Gateway    string `mapstructure:"gateway"`
+	Netmask    string `mapstructure:"netmask"`
+	CIDR       int    `mapstructure:"cidr"`
+	RangeStart string `mapstructure:"range_start"`
+	RangeEnd   string `mapstructure:"range_end"`
 }
 
 func Load() (*Config, error) {
@@ -34,7 +50,8 @@ func Load() (*Config, error) {
 	}
 
 	if home, err := os.UserHomeDir(); err == nil {
-		v.AddConfigPath(filepath.Join(home, ".pxon"))
+		v.AddConfigPath(filepath.Dir(ConfigFilePathFromHome(home)))
+		v.AddConfigPath(filepath.Dir(LegacyConfigFilePathFromHome(home)))
 	}
 
 	if err := v.ReadInConfig(); err != nil {
@@ -52,8 +69,9 @@ func Load() (*Config, error) {
 	if err := cfg.Validate(); err != nil {
 		if v.ConfigFileUsed() == "" {
 			return nil, fmt.Errorf(
-				"configuration not found or incomplete: %w; provide ~/.pxon/config.yaml or set PXON_ENDPOINT, PXON_TOKEN_ID and PXON_TOKEN_SECRET",
+				"configuration not found or incomplete: %w; provide %s or set PXON_ENDPOINT, PXON_TOKEN_ID and PXON_TOKEN_SECRET",
 				err,
+				ConfigFilePath(),
 			)
 		}
 
@@ -69,6 +87,18 @@ func bindEnv(v *viper.Viper) error {
 		"token_id",
 		"token_secret",
 		"insecure",
+		"default_storage",
+		"default_image",
+		"default_disk_size",
+		"default_password",
+		"default_net0",
+		"network.mode",
+		"network.bridge",
+		"network.gateway",
+		"network.netmask",
+		"network.cidr",
+		"network.range_start",
+		"network.range_end",
 	}
 
 	for _, key := range keys {
@@ -78,6 +108,69 @@ func bindEnv(v *viper.Viper) error {
 	}
 
 	return nil
+}
+
+func Save(cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("missing configuration")
+	}
+
+	configPath := ConfigFilePath()
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	v.SetConfigType("yaml")
+	v.Set("endpoint", cfg.Endpoint)
+	v.Set("token_id", cfg.TokenID)
+	v.Set("token_secret", cfg.TokenSecret)
+	v.Set("insecure", cfg.Insecure)
+	v.Set("default_storage", cfg.DefaultStorage)
+	v.Set("default_image", cfg.DefaultImage)
+	v.Set("default_disk_size", cfg.DefaultDiskSize)
+	v.Set("default_password", cfg.DefaultPassword)
+	v.Set("default_net0", cfg.DefaultNet0)
+	v.Set("network.mode", cfg.Network.Mode)
+	v.Set("network.bridge", cfg.Network.Bridge)
+	v.Set("network.gateway", cfg.Network.Gateway)
+	v.Set("network.netmask", cfg.Network.Netmask)
+	v.Set("network.cidr", cfg.Network.CIDR)
+	v.Set("network.range_start", cfg.Network.RangeStart)
+	v.Set("network.range_end", cfg.Network.RangeEnd)
+
+	if err := v.WriteConfigAs(configPath); err != nil {
+		return fmt.Errorf("write config file %s: %w", configPath, err)
+	}
+
+	return nil
+}
+
+func ConfigFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".config", "pxon", "config.yaml")
+	}
+
+	return ConfigFilePathFromHome(home)
+}
+
+func ConfigFilePathFromHome(home string) string {
+	return filepath.Join(home, ".config", "pxon", "config.yaml")
+}
+
+func LegacyConfigFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".pxon", "config.yaml")
+	}
+
+	return LegacyConfigFilePathFromHome(home)
+}
+
+func LegacyConfigFilePathFromHome(home string) string {
+	return filepath.Join(home, ".pxon", "config.yaml")
 }
 
 func (c Config) Validate() error {

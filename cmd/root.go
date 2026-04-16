@@ -13,7 +13,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:           "pxon",
-	Short:         "CLI per gestire macchine virtuali su Proxmox VE",
+	Short:         "CLI per creare e gestire container LXC su Proxmox VE",
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
