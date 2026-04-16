@@ -12,7 +12,7 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Elenca le macchine virtuali disponibili",
+	Short: "Elenca i container LXC disponibili",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
 		if err != nil {
@@ -24,7 +24,7 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		data, err := client.ListVMs()
+		data, err := client.ListContainers()
 		if err != nil {
 			return err
 		}
