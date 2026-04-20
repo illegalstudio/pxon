@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -12,6 +10,8 @@ import (
 
 	"pxon/internal/network"
 	"pxon/internal/proxmox"
+	"pxon/internal/sshkey"
+	"pxon/internal/ui"
 )
 
 type createOptions struct {
@@ -22,6 +22,7 @@ type createOptions struct {
 	storage      string
 	diskSize     string
 	password     string
+	sshKeyPath   string
 	memory       int
 	cores        int
 	swap         int
@@ -92,6 +93,19 @@ var createCmd = &cobra.Command{
 			password = cfg.DefaultPassword
 		}
 
+		sshKeyPath := strings.TrimSpace(createOpts.sshKeyPath)
+		if sshKeyPath == "" {
+			sshKeyPath = strings.TrimSpace(cfg.DefaultSSHPublicKeyPath)
+		}
+
+		sshPublicKeys := ""
+		if sshKeyPath != "" {
+			sshPublicKeys, err = sshkey.ReadPublicKey(sshKeyPath)
+			if err != nil {
+				return err
+			}
+		}
+
 		net0 := strings.TrimSpace(createOpts.net0)
 		if net0 == "" {
 			if strings.TrimSpace(cfg.DefaultNet0) != "" {
@@ -110,19 +124,20 @@ var createCmd = &cobra.Command{
 		}
 
 		req := proxmox.CreateContainerRequest{
-			Node:         node,
-			VMID:         vmid,
-			Hostname:     strings.TrimSpace(args[0]),
-			OSTemplate:   template,
-			RootFS:       rootfs,
-			Password:     password,
-			Memory:       createOpts.memory,
-			Cores:        createOpts.cores,
-			Swap:         createOpts.swap,
-			Net0:         net0,
-			Start:        createOpts.start,
-			Unprivileged: createOpts.unprivileged,
-			Tags:         createOpts.tags,
+			Node:          node,
+			VMID:          vmid,
+			Hostname:      strings.TrimSpace(args[0]),
+			OSTemplate:    template,
+			RootFS:        rootfs,
+			Password:      password,
+			SSHPublicKeys: sshPublicKeys,
+			Memory:        createOpts.memory,
+			Cores:         createOpts.cores,
+			Swap:          createOpts.swap,
+			Net0:          net0,
+			Start:         createOpts.start,
+			Unprivileged:  createOpts.unprivileged,
+			Tags:          createOpts.tags,
 		}
 
 		upid, err := client.StartCreateContainer(req)
@@ -130,22 +145,31 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		taskStatus, err := waitForCreateTask(cmd.ErrOrStderr(), client, node, upid, req.Hostname, vmid, req.Start)
+		progressWriter := cmd.ErrOrStderr()
+		if jsonEnabled() {
+			progressWriter = io.Discard
+		}
+
+		taskStatus, err := waitForCreateTask(progressWriter, client, node, upid, req.Hostname, vmid, req.Start)
 		if err != nil {
 			return err
 		}
 
-		data, err := json.Marshal(taskStatus)
-		if err != nil {
-			return fmt.Errorf("encode Proxmox task result: %w", err)
+		if jsonEnabled() {
+			return ui.WriteJSON(cmd.OutOrStdout(), taskStatus)
 		}
 
-		var pretty bytes.Buffer
-		if err := json.Indent(&pretty, data, "", "  "); err != nil {
-			return fmt.Errorf("invalid JSON response from Proxmox: %w", err)
-		}
-
-		fmt.Fprintln(cmd.OutOrStdout(), pretty.String())
+		ui.RenderCreateSummary(cmd.OutOrStdout(), ui.CreateSummary{
+			Hostname:   req.Hostname,
+			VMID:       vmid,
+			Node:       node,
+			Status:     taskStatus.ExitStatus,
+			Template:   req.OSTemplate,
+			RootFS:     req.RootFS,
+			Net0:       req.Net0,
+			SSHKeyPath: sshKeyPath,
+			UPID:       taskStatus.UPID,
+		})
 		return nil
 	},
 }
@@ -160,6 +184,7 @@ func init() {
 	createCmd.Flags().StringVar(&createOpts.storage, "storage", "", "Storage Proxmox per il disco rootfs; se omesso usa il default configurato")
 	createCmd.Flags().StringVar(&createOpts.diskSize, "disk-size", "", "Dimensione disco rootfs; se omessa usa il default configurato")
 	createCmd.Flags().StringVar(&createOpts.password, "password", "", "Password root iniziale; se omessa usa la default configurata")
+	createCmd.Flags().StringVar(&createOpts.sshKeyPath, "ssh-key", "", "Percorso della chiave SSH pubblica da installare; se omesso usa la default configurata")
 	createCmd.Flags().IntVar(&createOpts.memory, "memory", 512, "Memoria RAM in MB")
 	createCmd.Flags().IntVar(&createOpts.cores, "cores", 1, "Numero di CPU core")
 	createCmd.Flags().IntVar(&createOpts.swap, "swap", 512, "Swap in MB")
