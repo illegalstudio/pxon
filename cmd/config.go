@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,8 @@ import (
 	"pxon/internal/config"
 	"pxon/internal/network"
 	"pxon/internal/proxmox"
+	"pxon/internal/sshkey"
+	"pxon/internal/ui"
 )
 
 var configCmd = &cobra.Command{
@@ -33,7 +36,10 @@ var configCmd = &cobra.Command{
 		}
 
 		reader := bufio.NewReader(cmd.InOrStdin())
-		writer := cmd.OutOrStdout()
+		var writer io.Writer = cmd.OutOrStdout()
+		if jsonEnabled() {
+			writer = cmd.ErrOrStderr()
+		}
 
 		storages, err := client.ListStorages(node)
 		if err != nil {
@@ -102,6 +108,12 @@ var configCmd = &cobra.Command{
 			return err
 		}
 		currentCfg.DefaultPassword = password
+
+		sshKeyPath, err := promptSSHPublicKeyPath(reader, writer, currentCfg.DefaultSSHPublicKeyPath)
+		if err != nil {
+			return err
+		}
+		currentCfg.DefaultSSHPublicKeyPath = sshKeyPath
 
 		mode, err := promptSelection(
 			reader,
@@ -194,7 +206,12 @@ var configCmd = &cobra.Command{
 
 		cfg = currentCfg
 
-		fmt.Fprintf(writer, "Configurazione salvata in %s\n", config.ConfigFilePath())
+		summary := ui.NewConfigSummary(currentCfg, config.ConfigFilePath())
+		if jsonEnabled() {
+			return ui.WriteJSON(cmd.OutOrStdout(), summary)
+		}
+
+		ui.RenderConfigSummary(writer, summary)
 		return nil
 	},
 }
@@ -266,5 +283,68 @@ func promptValue(reader *bufio.Reader, writer interface{ Write([]byte) (int, err
 		}
 
 		return input, nil
+	}
+}
+
+func promptSSHPublicKeyPath(reader *bufio.Reader, writer interface{ Write([]byte) (int, error) }, current string) (string, error) {
+	keys, err := sshkey.ListPublicKeys()
+	if err != nil {
+		return "", err
+	}
+
+	current = strings.TrimSpace(current)
+
+	if len(keys) == 0 {
+		return promptValue(reader, writer, "Chiave SSH pubblica di default (opzionale)", current, false)
+	}
+
+	fmt.Fprintln(writer, "Chiave SSH pubblica di default:")
+	for index, key := range keys {
+		fmt.Fprintf(writer, "  %d) %s\n", index+1, key)
+	}
+	fmt.Fprintln(writer, "  m) inserisci un percorso manuale")
+	fmt.Fprintln(writer, "  0) nessuna")
+
+	defaultPrompt := "0"
+	if current != "" {
+		for index, key := range keys {
+			if key == current {
+				defaultPrompt = strconv.Itoa(index + 1)
+				break
+			}
+		}
+		if defaultPrompt == "0" {
+			defaultPrompt = "m"
+		}
+	} else if len(keys) == 1 {
+		defaultPrompt = "1"
+	}
+
+	for {
+		fmt.Fprintf(writer, "Scelta [%s]: ", defaultPrompt)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("read selection: %w", err)
+		}
+
+		input = strings.TrimSpace(input)
+		if input == "" {
+			input = defaultPrompt
+		}
+
+		switch input {
+		case "0":
+			return "", nil
+		case "m", "M":
+			return promptValue(reader, writer, "Percorso chiave SSH pubblica", current, false)
+		default:
+			choice, err := strconv.Atoi(input)
+			if err != nil || choice < 1 || choice > len(keys) {
+				fmt.Fprintln(writer, "Valore non valido, inserisci un numero, m oppure 0.")
+				continue
+			}
+
+			return keys[choice-1], nil
+		}
 	}
 }
