@@ -67,12 +67,17 @@ func RenderManagedContainers(writer io.Writer, containers []proxmox.Container) {
 
 	t := table.NewWriter()
 	t.SetOutputMirror(writer)
-	t.AppendHeader(table.Row{"VMID", "Name", "Status", "Node", "Uptime", "Mem", "Disk"})
+	t.AppendHeader(table.Row{"VMID", "Name", "Status", "IP", "Node", "Uptime", "Mem", "Disk"})
 	for _, container := range containers {
+		ip := container.IP
+		if ip == "" {
+			ip = "-"
+		}
 		t.AppendRow(table.Row{
 			container.VMID,
 			container.Name,
 			container.Status,
+			ip,
 			container.Node,
 			formatDuration(container.Uptime),
 			formatBytes(container.Mem),

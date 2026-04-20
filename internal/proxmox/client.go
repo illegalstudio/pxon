@@ -150,6 +150,7 @@ type Container struct {
 	Name      string  `json:"name"`
 	Tags      string  `json:"tags,omitempty"`
 	Managed   bool    `json:"managed"`
+	IP        string  `json:"ip,omitempty"`
 }
 
 func NewClient(cfg *config.Config) (*Client, error) {
@@ -215,6 +216,10 @@ func (c *Client) ManagedContainers() ([]Container, error) {
 		container.Managed = HasManagedTag(container.Tags)
 		if !container.Managed {
 			continue
+		}
+
+		if cfg, err := c.ContainerConfig(container.Node, container.VMID); err == nil {
+			container.IP, _ = IPv4FromNet0(cfg.Net0)
 		}
 
 		filtered.Data = append(filtered.Data, container)
