@@ -13,16 +13,17 @@ import (
 var ErrConfigNotLoaded = errors.New("configuration not loaded")
 
 type Config struct {
-	Endpoint        string        `mapstructure:"endpoint"`
-	TokenID         string        `mapstructure:"token_id"`
-	TokenSecret     string        `mapstructure:"token_secret"`
-	Insecure        bool          `mapstructure:"insecure"`
-	DefaultStorage  string        `mapstructure:"default_storage"`
-	DefaultImage    string        `mapstructure:"default_image"`
-	DefaultDiskSize string        `mapstructure:"default_disk_size"`
-	DefaultPassword string        `mapstructure:"default_password"`
-	DefaultNet0     string        `mapstructure:"default_net0"`
-	Network         NetworkConfig `mapstructure:"network"`
+	Endpoint                string        `mapstructure:"endpoint"`
+	TokenID                 string        `mapstructure:"token_id"`
+	TokenSecret             string        `mapstructure:"token_secret"`
+	Insecure                bool          `mapstructure:"insecure"`
+	DefaultStorage          string        `mapstructure:"default_storage"`
+	DefaultImage            string        `mapstructure:"default_image"`
+	DefaultDiskSize         string        `mapstructure:"default_disk_size"`
+	DefaultPassword         string        `mapstructure:"default_password"`
+	DefaultSSHPublicKeyPath string        `mapstructure:"default_ssh_public_key_path"`
+	DefaultNet0             string        `mapstructure:"default_net0"`
+	Network                 NetworkConfig `mapstructure:"network"`
 }
 
 type NetworkConfig struct {
@@ -91,6 +92,7 @@ func bindEnv(v *viper.Viper) error {
 		"default_image",
 		"default_disk_size",
 		"default_password",
+		"default_ssh_public_key_path",
 		"default_net0",
 		"network.mode",
 		"network.bridge",
@@ -131,6 +133,7 @@ func Save(cfg *Config) error {
 	v.Set("default_image", cfg.DefaultImage)
 	v.Set("default_disk_size", cfg.DefaultDiskSize)
 	v.Set("default_password", cfg.DefaultPassword)
+	v.Set("default_ssh_public_key_path", cfg.DefaultSSHPublicKeyPath)
 	v.Set("default_net0", cfg.DefaultNet0)
 	v.Set("network.mode", cfg.Network.Mode)
 	v.Set("network.bridge", cfg.Network.Bridge)
