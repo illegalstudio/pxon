@@ -113,19 +113,20 @@ type Template struct {
 }
 
 type CreateContainerRequest struct {
-	Node         string
-	VMID         int
-	Hostname     string
-	OSTemplate   string
-	RootFS       string
-	Password     string
-	Memory       int
-	Cores        int
-	Swap         int
-	Net0         string
-	Start        bool
-	Unprivileged bool
-	Tags         []string
+	Node          string
+	VMID          int
+	Hostname      string
+	OSTemplate    string
+	RootFS        string
+	Password      string
+	SSHPublicKeys string
+	Memory        int
+	Cores         int
+	Swap          int
+	Net0          string
+	Start         bool
+	Unprivileged  bool
+	Tags          []string
 }
 
 type Container struct {
@@ -176,7 +177,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) ListContainers() ([]byte, error) {
+func (c *Client) ManagedContainers() ([]Container, error) {
 	req, err := c.newRequest(http.MethodGet, c.endpoint+"/cluster/resources?type=vm", nil)
 	if err != nil {
 		return nil, fmt.Errorf("build Proxmox request: %w", err)
@@ -212,15 +213,14 @@ func (c *Client) ListContainers() ([]byte, error) {
 		}
 
 		container.Managed = HasManagedTag(container.Tags)
+		if !container.Managed {
+			continue
+		}
+
 		filtered.Data = append(filtered.Data, container)
 	}
 
-	data, err := json.Marshal(filtered)
-	if err != nil {
-		return nil, fmt.Errorf("encode filtered containers: %w", err)
-	}
-
-	return data, nil
+	return filtered.Data, nil
 }
 
 func (c *Client) DefaultNode() (string, error) {
@@ -588,6 +588,10 @@ func (c *Client) StartCreateContainer(createReq CreateContainerRequest) (string,
 
 	if createReq.Password != "" {
 		values.Set("password", createReq.Password)
+	}
+
+	if strings.TrimSpace(createReq.SSHPublicKeys) != "" {
+		values.Set("ssh-public-keys", createReq.SSHPublicKeys)
 	}
 
 	if createReq.Net0 != "" {
