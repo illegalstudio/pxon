@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	cfg    *config.Config
-	cfgErr error
+	cfg        *config.Config
+	cfgErr     error
+	outputJSON bool
 )
 
 var rootCmd = &cobra.Command{
@@ -24,6 +25,7 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Restituisce output JSON")
 }
 
 func initConfig() {
@@ -40,4 +42,8 @@ func currentConfig() (*config.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func jsonEnabled() bool {
+	return outputJSON
 }

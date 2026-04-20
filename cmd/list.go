@@ -1,18 +1,15 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"pxon/internal/proxmox"
+	"pxon/internal/ui"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Elenca i container LXC disponibili",
+	Short: "Elenca i container LXC gestiti da pxon",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
 		if err != nil {
@@ -24,17 +21,16 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		data, err := client.ListContainers()
+		containers, err := client.ManagedContainers()
 		if err != nil {
 			return err
 		}
 
-		var pretty bytes.Buffer
-		if err := json.Indent(&pretty, data, "", "  "); err != nil {
-			return fmt.Errorf("invalid JSON response from Proxmox: %w", err)
+		if jsonEnabled() {
+			return ui.WriteJSON(cmd.OutOrStdout(), map[string]any{"data": containers})
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), pretty.String())
+		ui.RenderManagedContainers(cmd.OutOrStdout(), containers)
 		return nil
 	},
 }
