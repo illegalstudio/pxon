@@ -38,7 +38,13 @@
 
 ## Quick start
 
-Build pxon from source:
+Install pxon with Homebrew:
+
+```sh
+brew install illegalstudio/tap/pxon
+```
+
+Or build pxon from source:
 
 ```sh
 git clone https://github.com/illegalstudio/pxon.git
@@ -99,6 +105,7 @@ Every container created by pxon receives the `pxon` tag. The `list`, `ssh`, and 
 - [Networking](docs/networking.md)
 - [Security and automation](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Releasing](docs/releasing.md)
 
 ## Development
 

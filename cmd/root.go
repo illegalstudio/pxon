@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pxon/internal/config"
+	"pxon/internal/version"
 )
 
 var (
@@ -15,6 +16,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:           "pxon",
 	Short:         "CLI for creating and managing LXC containers on Proxmox VE",
+	Version:       version.String(),
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
@@ -26,6 +28,7 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Return JSON output")
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 }
 
 func initConfig() {

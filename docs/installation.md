@@ -22,6 +22,23 @@ command -v ssh
 command -v ssh-keygen
 ```
 
+## Homebrew
+
+Install the latest release from the Illegal Studio tap:
+
+```sh
+brew install illegalstudio/tap/pxon
+```
+
+Upgrade an existing installation:
+
+```sh
+brew update
+brew upgrade pxon
+```
+
+The formula supports Apple Silicon and Intel macOS, plus ARM64 and AMD64 Linux.
+
 ## Build from source
 
 Clone the repository and compile the binary:
@@ -63,6 +80,12 @@ git pull --ff-only
 mkdir -p ./bin
 go build -o ./bin/pxon .
 install -m 0755 ./bin/pxon "$HOME/.local/bin/pxon"
+```
+
+Print the installed version:
+
+```sh
+pxon --version
 ```
 
 ## First-run bootstrap

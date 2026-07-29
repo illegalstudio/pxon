@@ -1,0 +1,67 @@
+version: 2
+
+project_name: pxon
+
+builds:
+  - id: darwin
+    main: .
+    binary: pxon
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X pxon/internal/version.Version={{.Version}}
+      - -X pxon/internal/version.Commit={{.ShortCommit}}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    hooks:
+      post:
+        - scripts/codesign.sh {{ .Path }}
+
+  - id: linux
+    main: .
+    binary: pxon
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X pxon/internal/version.Version={{.Version}}
+      - -X pxon/internal/version.Commit={{.ShortCommit}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: darwin
+    ids:
+      - darwin
+    formats:
+      - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+  - id: linux
+    ids:
+      - linux
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

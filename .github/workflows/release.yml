@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: |
+          go test ./...
+          go vet ./...
+
+      - name: Import Apple certificate
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+
+      - name: Build and publish GitHub release
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
+      - name: Notarize and update macOS archives
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          for archive in dist/pxon_*_darwin_*.zip; do
+            echo "Notarizing $archive ..."
+            xcrun notarytool submit "$archive" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_PASSWORD" \
+              --wait --timeout 360m
+
+            filename="$(basename "$archive")"
+            gh release delete-asset "$TAG" "$filename" \
+              --repo "$GITHUB_REPOSITORY" --yes
+            gh release upload "$TAG" "$archive" \
+              --repo "$GITHUB_REPOSITORY"
+          done
+
+          checksums="dist/pxon_${TAG#v}_checksums.txt"
+          (
+            cd dist
+            shasum -a 256 pxon_*.zip pxon_*.tar.gz > "$(basename "$checksums")"
+          )
+
+          checksums_name="$(basename "$checksums")"
+          gh release delete-asset "$TAG" "$checksums_name" \
+            --repo "$GITHUB_REPOSITORY" --yes
+          gh release upload "$TAG" "$checksums" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAP_DIR="$RUNNER_TEMP/homebrew-tap"
+          FORMULA_PATH="$TAP_DIR/Formula/pxon.rb"
+
+          git clone \
+            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/illegalstudio/homebrew-tap.git" \
+            "$TAP_DIR"
+
+          mkdir -p "$TAP_DIR/Formula"
+          scripts/generate-homebrew-formula.sh "$TAG" dist > "$FORMULA_PATH"
+          ruby -c "$FORMULA_PATH"
+
+          cd "$TAP_DIR"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/pxon.rb
+
+          if git diff --cached --quiet; then
+            echo "Homebrew formula is already up to date"
+            exit 0
+          fi
+
+          git commit -m "brew formula pxon ${TAG}"
+          git push
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true

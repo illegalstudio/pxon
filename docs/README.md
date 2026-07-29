@@ -10,6 +10,7 @@ pxon is a Go CLI for a focused set of Proxmox VE LXC operations. This documentat
 - [Networking](networking.md) — DHCP, static pools, address selection, and SSH implications.
 - [Security and automation](security.md) — API tokens, TLS, local secrets, deletion, and JSON output.
 - [Troubleshooting](troubleshooting.md) — common errors and their likely causes.
+- [Releasing](releasing.md) — tags, signed artifacts, GitHub releases, and the Homebrew formula.
 
 ## Core model
 
