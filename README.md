@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo-mark.png" alt="pxon logo" width="130">
+</p>
+
 <h1 align="center">pxon</h1>
 
 <p align="center">
