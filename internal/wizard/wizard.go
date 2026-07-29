@@ -92,6 +92,22 @@ func Select(label string, options []string, defaultIndex int) (string, error) {
 	return options[m.selected], nil
 }
 
+// Confirm asks a yes/no question and returns true when the user selects "Sì".
+func Confirm(label string, defaultYes bool) (bool, error) {
+	options := []string{"No", "Sì"}
+	defaultIndex := 0
+	if defaultYes {
+		defaultIndex = 1
+	}
+
+	choice, err := Select(label, options, defaultIndex)
+	if err != nil {
+		return false, err
+	}
+
+	return choice == "Sì", nil
+}
+
 // ---- Input ----
 
 type inputModel struct {

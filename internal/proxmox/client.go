@@ -640,6 +640,49 @@ func (c *Client) StartCreateContainer(createReq CreateContainerRequest) (string,
 	return upidResp.Data, nil
 }
 
+func (c *Client) StartDeleteContainer(node string, vmid int, force bool) (string, error) {
+	node = strings.TrimSpace(node)
+	if node == "" {
+		return "", fmt.Errorf("missing Proxmox node")
+	}
+
+	if vmid <= 0 {
+		return "", fmt.Errorf("invalid VMID %d", vmid)
+	}
+
+	endpoint := fmt.Sprintf("%s/nodes/%s/lxc/%d", c.endpoint, url.PathEscape(node), vmid)
+	if force {
+		endpoint += "?force=1"
+	}
+
+	req, err := c.newRequest(http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("build Proxmox request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request Proxmox API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read Proxmox response: %w", err)
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("Proxmox API returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	var upidResp TaskUPIDResponse
+	if err := json.Unmarshal(body, &upidResp); err != nil {
+		return "", fmt.Errorf("decode Proxmox response: %w", err)
+	}
+
+	return upidResp.Data, nil
+}
+
 func HasManagedTag(tags string) bool {
 	for _, tag := range strings.Split(tags, ";") {
 		if strings.TrimSpace(tag) == ManagedTag {

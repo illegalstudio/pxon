@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -40,7 +41,7 @@ var sshCmd = &cobra.Command{
 		var target proxmox.Container
 		if len(args) == 1 {
 			name := strings.TrimSpace(args[0])
-			match, err := findContainerByName(containers, name)
+			match, err := findContainer(containers, name)
 			if err != nil {
 				return err
 			}
@@ -66,21 +67,36 @@ func init() {
 	rootCmd.AddCommand(sshCmd)
 }
 
-func findContainerByName(containers []proxmox.Container, name string) (proxmox.Container, error) {
+func findContainer(containers []proxmox.Container, identifier string) (proxmox.Container, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return proxmox.Container{}, fmt.Errorf("nome o VMID del container richiesto")
+	}
+
+	if vmid, err := strconv.Atoi(identifier); err == nil {
+		for _, container := range containers {
+			if container.VMID == vmid {
+				return container, nil
+			}
+		}
+
+		return proxmox.Container{}, fmt.Errorf("container con VMID %d non trovato", vmid)
+	}
+
 	var matches []proxmox.Container
 	for _, c := range containers {
-		if strings.EqualFold(c.Name, name) {
+		if strings.EqualFold(c.Name, identifier) {
 			matches = append(matches, c)
 		}
 	}
 
 	switch len(matches) {
 	case 0:
-		return proxmox.Container{}, fmt.Errorf("container %q non trovato", name)
+		return proxmox.Container{}, fmt.Errorf("container %q non trovato", identifier)
 	case 1:
 		return matches[0], nil
 	default:
-		return proxmox.Container{}, fmt.Errorf("trovati più container con nome %q, specifica il VMID", name)
+		return proxmox.Container{}, fmt.Errorf("trovati più container con nome %q, specifica il VMID", identifier)
 	}
 }
 
