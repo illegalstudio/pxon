@@ -50,6 +50,14 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.options)-1 {
 				m.cursor++
 			}
+		case "tab":
+			if len(m.options) > 0 {
+				m.cursor = (m.cursor + 1) % len(m.options)
+			}
+		case "shift+tab":
+			if len(m.options) > 0 {
+				m.cursor = (m.cursor - 1 + len(m.options)) % len(m.options)
+			}
 		case "enter":
 			m.selected = m.cursor
 			m.done = true
@@ -73,7 +81,7 @@ func (m selectModel) View() string {
 		}
 		sb.WriteString("\n")
 	}
-	sb.WriteString(dimStyle.Render("↑/↓ navigate  •  enter to confirm"))
+	sb.WriteString(dimStyle.Render("↑/↓ or tab/shift+tab navigate  •  enter to confirm"))
 	return sb.String()
 }
 
