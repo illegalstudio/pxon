@@ -14,7 +14,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:           "pxon",
-	Short:         "CLI per creare e gestire container LXC su Proxmox VE",
+	Short:         "CLI for creating and managing LXC containers on Proxmox VE",
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
@@ -25,7 +25,7 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Restituisce output JSON")
+	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Return JSON output")
 }
 
 func initConfig() {

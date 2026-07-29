@@ -19,11 +19,11 @@ import (
 
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Configura i default di pxon con un wizard interattivo",
+	Short: "Configure pxon defaults with an interactive wizard",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		err := runConfigWizard(cmd)
 		if errors.Is(err, wizard.ErrCancelled) {
-			fmt.Fprintln(cmd.ErrOrStderr(), "Annullato.")
+			fmt.Fprintln(cmd.ErrOrStderr(), "Cancelled.")
 			return nil
 		}
 		return err
@@ -61,7 +61,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 
 	if len(storages) == 1 {
 		currentCfg.DefaultStorage = storages[0].Storage
-		fmt.Fprintf(writer, "Storage disponibile unico rilevato: %s\n", currentCfg.DefaultStorage)
+		fmt.Fprintf(writer, "Single available storage detected: %s\n", currentCfg.DefaultStorage)
 	} else {
 		options := make([]string, 0, len(storages))
 		defaultIndex := 0
@@ -71,7 +71,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 				defaultIndex = i
 			}
 		}
-		currentCfg.DefaultStorage, err = wizard.Select("Seleziona lo storage di default per i container:", options, defaultIndex)
+		currentCfg.DefaultStorage, err = wizard.Select("Select the default container storage:", options, defaultIndex)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 
 	if len(templates) == 1 {
 		currentCfg.DefaultImage = templates[0].VolID
-		fmt.Fprintf(writer, "Template disponibile unico rilevato: %s\n", currentCfg.DefaultImage)
+		fmt.Fprintf(writer, "Single available template detected: %s\n", currentCfg.DefaultImage)
 	} else {
 		options := make([]string, 0, len(templates))
 		defaultIndex := 0
@@ -97,18 +97,18 @@ func runConfigWizard(cmd *cobra.Command) error {
 				defaultIndex = i
 			}
 		}
-		currentCfg.DefaultImage, err = wizard.Select("Seleziona il template LXC di default:", options, defaultIndex)
+		currentCfg.DefaultImage, err = wizard.Select("Select the default LXC template:", options, defaultIndex)
 		if err != nil {
 			return err
 		}
 	}
 
-	currentCfg.DefaultDiskSize, err = wizard.Input("Disk size di default", currentCfg.DefaultDiskSize, true)
+	currentCfg.DefaultDiskSize, err = wizard.Input("Default disk size", currentCfg.DefaultDiskSize, true)
 	if err != nil {
 		return err
 	}
 
-	currentCfg.DefaultPassword, err = wizard.Input("Password di default", currentCfg.DefaultPassword, true)
+	currentCfg.DefaultPassword, err = wizard.Input("Default password", currentCfg.DefaultPassword, true)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 	}
 
 	mode, err := wizard.Select(
-		"Modalità rete di default:",
+		"Default network mode:",
 		[]string{"dhcp", "pool"},
 		defaultNetworkModeIndex(currentCfg.Network.Mode),
 	)
@@ -136,7 +136,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 
 	if len(bridges) == 1 {
 		currentCfg.Network.Bridge = bridges[0]
-		fmt.Fprintf(writer, "Bridge disponibile unico rilevato: %s\n", currentCfg.Network.Bridge)
+		fmt.Fprintf(writer, "Single available bridge detected: %s\n", currentCfg.Network.Bridge)
 	} else if len(bridges) > 1 {
 		defaultIndex := 0
 		for i, b := range bridges {
@@ -145,19 +145,19 @@ func runConfigWizard(cmd *cobra.Command) error {
 				break
 			}
 		}
-		currentCfg.Network.Bridge, err = wizard.Select("Seleziona il bridge di default:", bridges, defaultIndex)
+		currentCfg.Network.Bridge, err = wizard.Select("Select the default bridge:", bridges, defaultIndex)
 		if err != nil {
 			return err
 		}
 	} else {
-		currentCfg.Network.Bridge, err = wizard.Input("Bridge di default", currentCfg.Network.Bridge, true)
+		currentCfg.Network.Bridge, err = wizard.Input("Default bridge", currentCfg.Network.Bridge, true)
 		if err != nil {
 			return err
 		}
 	}
 
 	if mode == "pool" {
-		currentCfg.Network.Gateway, err = wizard.Input("Gateway di default", currentCfg.Network.Gateway, true)
+		currentCfg.Network.Gateway, err = wizard.Input("Default gateway", currentCfg.Network.Gateway, true)
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 			netmaskDefault = strconv.Itoa(currentCfg.Network.CIDR)
 		}
 
-		netmaskInput, err := wizard.Input("Maschera di rete", netmaskDefault, true)
+		netmaskInput, err := wizard.Input("Network mask", netmaskDefault, true)
 		if err != nil {
 			return err
 		}
@@ -177,12 +177,12 @@ func runConfigWizard(cmd *cobra.Command) error {
 		currentCfg.Network.Netmask = netmaskInput
 		currentCfg.Network.CIDR = 0
 
-		currentCfg.Network.RangeStart, err = wizard.Input("IP iniziale del pool", currentCfg.Network.RangeStart, true)
+		currentCfg.Network.RangeStart, err = wizard.Input("Pool start IP", currentCfg.Network.RangeStart, true)
 		if err != nil {
 			return err
 		}
 
-		currentCfg.Network.RangeEnd, err = wizard.Input("IP finale del pool", currentCfg.Network.RangeEnd, true)
+		currentCfg.Network.RangeEnd, err = wizard.Input("Pool end IP", currentCfg.Network.RangeEnd, true)
 		if err != nil {
 			return err
 		}
@@ -229,11 +229,11 @@ func selectSSHPublicKeyPath(current string) (string, error) {
 	current = strings.TrimSpace(current)
 
 	if len(keys) == 0 {
-		return wizard.Input("Chiave SSH pubblica di default (opzionale)", current, false)
+		return wizard.Input("Default SSH public key (optional)", current, false)
 	}
 
-	const optNone = "Nessuna"
-	const optManual = "Percorso manuale..."
+	const optNone = "None"
+	const optManual = "Manual path..."
 
 	options := make([]string, 0, len(keys)+2)
 	options = append(options, optNone)
@@ -255,7 +255,7 @@ func selectSSHPublicKeyPath(current string) (string, error) {
 		defaultIndex = 1
 	}
 
-	selection, err := wizard.Select("Chiave SSH pubblica di default:", options, defaultIndex)
+	selection, err := wizard.Select("Default SSH public key:", options, defaultIndex)
 	if err != nil {
 		return "", err
 	}
@@ -264,7 +264,7 @@ func selectSSHPublicKeyPath(current string) (string, error) {
 	case optNone:
 		return "", nil
 	case optManual:
-		return wizard.Input("Percorso chiave SSH pubblica", current, false)
+		return wizard.Input("SSH public key path", current, false)
 	default:
 		return selection, nil
 	}

@@ -31,8 +31,8 @@ type deleteResult struct {
 var deleteOpts deleteOptions
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete [nome|vmid]",
-	Short: "Elimina un container LXC gestito da pxon",
+	Use:   "delete [name|vmid]",
+	Short: "Delete a pxon-managed LXC container",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
@@ -51,7 +51,7 @@ var deleteCmd = &cobra.Command{
 		}
 
 		if len(containers) == 0 {
-			return fmt.Errorf("nessun container pxon disponibile")
+			return fmt.Errorf("no pxon-managed containers available")
 		}
 
 		var target proxmox.Container
@@ -77,7 +77,7 @@ var deleteCmd = &cobra.Command{
 		if !deleteOpts.force {
 			confirmed, err := wizard.Confirm(
 				fmt.Sprintf(
-					"Eliminare definitivamente %s (VMID %d, nodo %s, stato %s)?",
+					"Permanently delete %s (VMID %d, node %s, status %s)?",
 					target.Name,
 					target.VMID,
 					target.Node,
@@ -89,7 +89,7 @@ var deleteCmd = &cobra.Command{
 				return err
 			}
 			if !confirmed {
-				fmt.Fprintln(cmd.OutOrStdout(), "Operazione annullata.")
+				fmt.Fprintln(cmd.OutOrStdout(), "Operation cancelled.")
 				return nil
 			}
 		}
@@ -98,8 +98,8 @@ var deleteCmd = &cobra.Command{
 		if knownHostMatches.Rows > 0 && !deleteOpts.force {
 			removeKnownHosts, err = wizard.Confirm(
 				fmt.Sprintf(
-					"Trovate %d righe in %s per %s. Eliminarle dopo la distruzione del container?",
-					knownHostMatches.Rows,
+					"Found %s in %s for %s. Remove after deleting the container?",
+					knownHostsEntryCount(knownHostMatches.Rows),
 					knownHostsPath,
 					strings.Join(knownHostMatches.Hosts, ", "),
 				),
@@ -114,7 +114,7 @@ var deleteCmd = &cobra.Command{
 		if jsonEnabled() {
 			progressWriter = io.Discard
 		}
-		fmt.Fprintf(progressWriter, "Eliminazione di %s (VMID %d)...\n", target.Name, target.VMID)
+		fmt.Fprintf(progressWriter, "Deleting %s (VMID %d)...\n", target.Name, target.VMID)
 
 		apiForce := deleteOpts.force || strings.EqualFold(target.Status, "running")
 		upid, err := client.StartDeleteContainer(target.Node, target.VMID, apiForce)
@@ -133,7 +133,7 @@ var deleteCmd = &cobra.Command{
 		knownHostsRemoved := false
 		if knownHostMatches.Rows > 0 && removeKnownHosts {
 			if err := knownhosts.Remove(knownHostsPath, knownHostMatches.Hosts); err != nil {
-				return fmt.Errorf("container eliminato, ma pulizia known_hosts fallita: %w", err)
+				return fmt.Errorf("container deleted, but known_hosts cleanup failed: %w", err)
 			}
 			knownHostsRemoved = true
 		}
@@ -152,12 +152,12 @@ var deleteCmd = &cobra.Command{
 			return ui.WriteJSON(cmd.OutOrStdout(), result)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Container %s (VMID %d) eliminato.\n", target.Name, target.VMID)
+		fmt.Fprintf(cmd.OutOrStdout(), "Container %s (VMID %d) deleted.\n", target.Name, target.VMID)
 		switch {
 		case knownHostsRemoved:
-			fmt.Fprintf(cmd.OutOrStdout(), "Rimosse %d righe da %s.\n", knownHostMatches.Rows, knownHostsPath)
+			fmt.Fprintf(cmd.OutOrStdout(), "Removed %s from %s.\n", knownHostsEntryCount(knownHostMatches.Rows), knownHostsPath)
 		case knownHostMatches.Rows > 0:
-			fmt.Fprintf(cmd.OutOrStdout(), "Mantenute %d righe in %s.\n", knownHostMatches.Rows, knownHostsPath)
+			fmt.Fprintf(cmd.OutOrStdout(), "Kept %s in %s.\n", knownHostsEntryCount(knownHostMatches.Rows), knownHostsPath)
 		}
 
 		return nil
@@ -170,6 +170,14 @@ func init() {
 		&deleteOpts.force,
 		"force",
 		false,
-		"Elimina senza conferme e rimuove automaticamente le corrispondenze da SSH known_hosts",
+		"Delete without confirmation and automatically remove matching SSH known_hosts entries",
 	)
+}
+
+func knownHostsEntryCount(count int) string {
+	if count == 1 {
+		return "1 entry"
+	}
+
+	return fmt.Sprintf("%d entries", count)
 }

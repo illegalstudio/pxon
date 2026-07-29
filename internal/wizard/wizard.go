@@ -18,7 +18,7 @@ var (
 )
 
 // ErrCancelled is returned when the user presses Ctrl+C.
-var ErrCancelled = errors.New("annullato")
+var ErrCancelled = errors.New("cancelled")
 
 // ---- Select ----
 
@@ -71,7 +71,7 @@ func (m selectModel) View() string {
 		}
 		sb.WriteString("\n")
 	}
-	sb.WriteString(dimStyle.Render("↑/↓ naviga  •  invio conferma"))
+	sb.WriteString(dimStyle.Render("↑/↓ navigate  •  enter to confirm"))
 	return sb.String()
 }
 
@@ -92,9 +92,9 @@ func Select(label string, options []string, defaultIndex int) (string, error) {
 	return options[m.selected], nil
 }
 
-// Confirm asks a yes/no question and returns true when the user selects "Sì".
+// Confirm asks a yes/no question and returns true when the user selects "Yes".
 func Confirm(label string, defaultYes bool) (bool, error) {
-	options := []string{"No", "Sì"}
+	options := []string{"No", "Yes"}
 	defaultIndex := 0
 	if defaultYes {
 		defaultIndex = 1
@@ -105,7 +105,7 @@ func Confirm(label string, defaultYes bool) (bool, error) {
 		return false, err
 	}
 
-	return choice == "Sì", nil
+	return choice == "Yes", nil
 }
 
 // ---- Input ----
@@ -132,7 +132,7 @@ func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			if m.required && strings.TrimSpace(m.ti.Value()) == "" {
-				m.errMsg = "Valore richiesto."
+				m.errMsg = "A value is required."
 				return m, nil
 			}
 			m.done = true
@@ -156,7 +156,7 @@ func (m inputModel) View() string {
 		sb.WriteString(errorStyle.Render(m.errMsg))
 	}
 	sb.WriteString("\n")
-	sb.WriteString(dimStyle.Render("invio conferma"))
+	sb.WriteString(dimStyle.Render("enter to confirm"))
 	return sb.String()
 }
 

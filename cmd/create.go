@@ -36,7 +36,7 @@ var createOpts createOptions
 
 var createCmd = &cobra.Command{
 	Use:   "create <hostname>",
-	Short: "Crea un container LXC gestito da pxon",
+	Short: "Create a pxon-managed LXC container",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
@@ -177,21 +177,21 @@ var createCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	createCmd.Flags().StringVar(&createOpts.node, "node", "", "Nodo Proxmox su cui creare il container")
-	createCmd.Flags().IntVar(&createOpts.vmid, "vmid", 0, "VMID da usare; se omesso viene richiesto il prossimo ID disponibile")
-	createCmd.Flags().StringVar(&createOpts.template, "template", "", "Template LXC Proxmox; se omesso usa il default configurato")
-	createCmd.Flags().StringVar(&createOpts.rootfs, "rootfs", "", "Valore rootfs Proxmox completo, ad esempio storage:8")
-	createCmd.Flags().StringVar(&createOpts.storage, "storage", "", "Storage Proxmox per il disco rootfs; se omesso usa il default configurato")
-	createCmd.Flags().StringVar(&createOpts.diskSize, "disk-size", "", "Dimensione disco rootfs; se omessa usa il default configurato")
-	createCmd.Flags().StringVar(&createOpts.password, "password", "", "Password root iniziale; se omessa usa la default configurata")
-	createCmd.Flags().StringVar(&createOpts.sshKeyPath, "ssh-key", "", "Percorso della chiave SSH pubblica da installare; se omesso usa la default configurata")
-	createCmd.Flags().IntVar(&createOpts.memory, "memory", 512, "Memoria RAM in MB")
-	createCmd.Flags().IntVar(&createOpts.cores, "cores", 1, "Numero di CPU core")
+	createCmd.Flags().StringVar(&createOpts.node, "node", "", "Proxmox node on which to create the container")
+	createCmd.Flags().IntVar(&createOpts.vmid, "vmid", 0, "VMID to use; when omitted, request the next available ID")
+	createCmd.Flags().StringVar(&createOpts.template, "template", "", "Proxmox LXC template; when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.rootfs, "rootfs", "", "Complete Proxmox rootfs value, for example storage:8")
+	createCmd.Flags().StringVar(&createOpts.storage, "storage", "", "Storage for the rootfs disk; when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.diskSize, "disk-size", "", "Rootfs disk size; when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.password, "password", "", "Initial root password; when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.sshKeyPath, "ssh-key", "", "Path to the SSH public key to install; when omitted, use the configured default")
+	createCmd.Flags().IntVar(&createOpts.memory, "memory", 512, "RAM in MB")
+	createCmd.Flags().IntVar(&createOpts.cores, "cores", 1, "Number of CPU cores")
 	createCmd.Flags().IntVar(&createOpts.swap, "swap", 512, "Swap in MB")
-	createCmd.Flags().StringVar(&createOpts.net0, "net0", "", "Configurazione rete Proxmox net0; se omessa usa il default configurato")
-	createCmd.Flags().BoolVar(&createOpts.start, "start", true, "Avvia il container al termine della creazione; usa --start=false per non avviarlo")
-	createCmd.Flags().BoolVar(&createOpts.unprivileged, "unprivileged", true, "Crea un container LXC unprivileged")
-	createCmd.Flags().StringSliceVar(&createOpts.tags, "tag", nil, "Tag aggiuntivo da applicare; il tag pxon viene sempre aggiunto")
+	createCmd.Flags().StringVar(&createOpts.net0, "net0", "", "Proxmox net0 network configuration; when omitted, use the configured default")
+	createCmd.Flags().BoolVar(&createOpts.start, "start", true, "Start the container after creation; use --start=false to leave it stopped")
+	createCmd.Flags().BoolVar(&createOpts.unprivileged, "unprivileged", true, "Create an unprivileged LXC container")
+	createCmd.Flags().StringSliceVar(&createOpts.tags, "tag", nil, "Additional tag to apply; the pxon tag is always added")
 }
 
 func waitForCreateTask(writer io.Writer, client *proxmox.Client, node, upid, hostname string, vmid int, shouldStart bool) (*proxmox.TaskStatus, error) {

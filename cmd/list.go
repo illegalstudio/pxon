@@ -9,7 +9,7 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Elenca i container LXC gestiti da pxon",
+	Short: "List LXC containers managed by pxon",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
 		if err != nil {

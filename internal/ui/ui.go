@@ -61,7 +61,7 @@ func WriteJSON(writer io.Writer, value any) error {
 func RenderManagedContainers(writer io.Writer, containers []proxmox.Container) {
 	if len(containers) == 0 {
 		fmt.Fprintln(writer, titleStyle.Render("Managed Containers"))
-		fmt.Fprintln(writer, mutedStyle.Render("Nessun container pxon trovato."))
+		fmt.Fprintln(writer, mutedStyle.Render("No pxon-managed containers found."))
 		return
 	}
 

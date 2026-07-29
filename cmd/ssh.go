@@ -15,8 +15,8 @@ import (
 )
 
 var sshCmd = &cobra.Command{
-	Use:   "ssh [nome]",
-	Short: "Apre una sessione SSH verso un container gestito da pxon",
+	Use:   "ssh [name|vmid]",
+	Short: "Open an SSH session to a pxon-managed container",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := currentConfig()
@@ -35,7 +35,7 @@ var sshCmd = &cobra.Command{
 		}
 
 		if len(containers) == 0 {
-			return fmt.Errorf("nessun container pxon disponibile")
+			return fmt.Errorf("no pxon-managed containers available")
 		}
 
 		var target proxmox.Container
@@ -56,7 +56,7 @@ var sshCmd = &cobra.Command{
 
 		ip := strings.TrimSpace(target.IP)
 		if ip == "" {
-			return fmt.Errorf("container %s non ha un indirizzo IP configurato", target.Name)
+			return fmt.Errorf("container %s has no configured IP address", target.Name)
 		}
 
 		return runSSH(ip)
@@ -70,7 +70,7 @@ func init() {
 func findContainer(containers []proxmox.Container, identifier string) (proxmox.Container, error) {
 	identifier = strings.TrimSpace(identifier)
 	if identifier == "" {
-		return proxmox.Container{}, fmt.Errorf("nome o VMID del container richiesto")
+		return proxmox.Container{}, fmt.Errorf("container name or VMID is required")
 	}
 
 	if vmid, err := strconv.Atoi(identifier); err == nil {
@@ -80,7 +80,7 @@ func findContainer(containers []proxmox.Container, identifier string) (proxmox.C
 			}
 		}
 
-		return proxmox.Container{}, fmt.Errorf("container con VMID %d non trovato", vmid)
+		return proxmox.Container{}, fmt.Errorf("container with VMID %d not found", vmid)
 	}
 
 	var matches []proxmox.Container
@@ -92,11 +92,11 @@ func findContainer(containers []proxmox.Container, identifier string) (proxmox.C
 
 	switch len(matches) {
 	case 0:
-		return proxmox.Container{}, fmt.Errorf("container %q non trovato", identifier)
+		return proxmox.Container{}, fmt.Errorf("container %q not found", identifier)
 	case 1:
 		return matches[0], nil
 	default:
-		return proxmox.Container{}, fmt.Errorf("trovati più container con nome %q, specifica il VMID", identifier)
+		return proxmox.Container{}, fmt.Errorf("multiple containers named %q found; specify the VMID", identifier)
 	}
 }
 
@@ -105,12 +105,12 @@ func pickContainer(containers []proxmox.Container) (proxmox.Container, error) {
 	for i, c := range containers {
 		ip := c.IP
 		if ip == "" {
-			ip = "senza IP"
+			ip = "no IP"
 		}
 		options[i] = fmt.Sprintf("%s  (%d, %s, %s)", c.Name, c.VMID, ip, c.Status)
 	}
 
-	choice, err := wizard.Select("Seleziona il container", options, 0)
+	choice, err := wizard.Select("Select a container", options, 0)
 	if err != nil {
 		return proxmox.Container{}, err
 	}
@@ -121,13 +121,13 @@ func pickContainer(containers []proxmox.Container) (proxmox.Container, error) {
 		}
 	}
 
-	return proxmox.Container{}, fmt.Errorf("selezione non valida")
+	return proxmox.Container{}, fmt.Errorf("invalid selection")
 }
 
 func runSSH(ip string) error {
 	path, err := exec.LookPath("ssh")
 	if err != nil {
-		return fmt.Errorf("comando ssh non trovato: %w", err)
+		return fmt.Errorf("ssh command not found: %w", err)
 	}
 
 	args := []string{"ssh", fmt.Sprintf("root@%s", ip)}
