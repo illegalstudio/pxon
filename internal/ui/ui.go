@@ -12,14 +12,15 @@ import (
 
 	"pxon/internal/config"
 	"pxon/internal/proxmox"
+	"pxon/internal/theme"
 )
 
 var (
-	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
-	valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	okStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.TitleColor)
+	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.LabelColor)
+	valueStyle = lipgloss.NewStyle().Foreground(theme.TextColor)
+	mutedStyle = lipgloss.NewStyle().Foreground(theme.MutedColor)
+	okStyle    = lipgloss.NewStyle().Bold(true).Foreground(theme.SuccessColor)
 )
 
 type ConfigSummary struct {

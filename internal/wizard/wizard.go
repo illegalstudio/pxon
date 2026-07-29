@@ -7,14 +7,16 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"pxon/internal/theme"
 )
 
 var (
-	labelStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
-	cursorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
-	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	errorStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	labelStyle    = lipgloss.NewStyle().Bold(true).Foreground(theme.TitleColor)
+	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.SuccessColor)
+	cursorStyle   = lipgloss.NewStyle().Foreground(theme.LabelColor)
+	dimStyle      = lipgloss.NewStyle().Foreground(theme.MutedColor)
+	errorStyle    = lipgloss.NewStyle().Foreground(theme.ErrorColor)
 )
 
 // ErrCancelled is returned when the user presses Ctrl+C.
@@ -164,6 +166,12 @@ func (m inputModel) View() string {
 // If defaultValue is non-empty it is pre-filled in the field.
 func Input(label, defaultValue string, required bool) (string, error) {
 	ti := textinput.New()
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(theme.LabelColor)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.TextColor)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.MutedColor)
+	ti.CompletionStyle = lipgloss.NewStyle().Foreground(theme.MutedColor)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(theme.LabelColor)
+	ti.Cursor.TextStyle = lipgloss.NewStyle().Foreground(theme.TextColor)
 	ti.SetValue(defaultValue)
 	ti.Focus()
 	ti.CharLimit = 256
