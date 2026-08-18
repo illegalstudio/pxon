@@ -122,7 +122,7 @@ The JSON document contains a top-level `data` array with the Proxmox resource fi
 ## `pxon ssh`
 
 ```text
-pxon ssh [name|vmid]
+pxon ssh [name|vmid] [-- command...]
 ```
 
 Without an argument, pxon opens an interactive managed-container selector. With an argument, the match is:
@@ -136,6 +136,16 @@ pxon then replaces its own process with:
 ssh root@<configured-ip>
 ```
 
+To run a command instead of opening an interactive shell, put it after `--`:
+
+```text
+pxon ssh <name|vmid> -- <command> [args...]
+```
+
+pxon forwards each argument after `--` to the local OpenSSH client after the
+destination; it does not invoke or interpolate a local shell. Quote shell
+expressions as a single argument, just as you would when invoking `ssh` directly.
+
 The command requires a static IPv4 address in the container `net0` configuration. pxon does not currently resolve DHCP leases or guest-agent addresses.
 
 Examples:
@@ -143,7 +153,12 @@ Examples:
 ```sh
 pxon ssh web-01
 pxon ssh 104
+pxon ssh web-01 -- uname -a
+pxon ssh 104 -- 'systemctl is-active nginx && uptime'
+pxon ssh -- hostname
 ```
+
+The last form opens the managed-container selector before running `hostname`.
 
 ## `pxon delete`
 

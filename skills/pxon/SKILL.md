@@ -21,7 +21,7 @@ Use the installed `pxon` executable as the source of truth for the available com
 - Refresh this skill after upgrading PXON with `pxon skills install`, selecting each agent destination that should receive the update. If PXON reports locally modified skill files, do not add `--force` without the user's approval.
 - Inspect managed containers with `pxon list --json`. PXON only returns LXC containers carrying the exact `pxon` tag.
 - Create a container with `pxon create <hostname> --json` plus only the flags required by the request. Prefer an SSH public key over an initial password. Never place a password directly in a command unless the user explicitly requests that exposure.
-- Connect with `pxon ssh <name-or-vmid>`. Explain that PXON requires a configured static IPv4 address and replaces its process with the local SSH client.
+- Connect with `pxon ssh <name-or-vmid>`. Run a remote command with `pxon ssh <name-or-vmid> -- <command> [args...]`; omit the target to select it interactively. PXON requires a configured static IPv4 address and replaces its process with the local SSH client. It forwards command arguments without invoking a local shell; quote a pipeline or compound command as one argument, just as with direct `ssh` usage.
 - Delete with `pxon delete <name-or-vmid>`. First inspect `pxon list --json` and verify the resolved name and VMID with the user. Allow the interactive confirmation by default.
 
 ## Apply mutation safeguards

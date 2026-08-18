@@ -71,6 +71,7 @@ Create and manage a container:
 ./bin/pxon create app-01
 ./bin/pxon list
 ./bin/pxon ssh app-01
+./bin/pxon ssh app-01 -- uname -a
 ./bin/pxon delete app-01
 ```
 
@@ -89,7 +90,7 @@ For a non-interactive deletion:
 | `pxon config` | Discover and save default storage, template, SSH key, and network settings. |
 | `pxon create <hostname>` | Create a tagged LXC container and wait for the Proxmox task. |
 | `pxon list` | List pxon-managed containers. |
-| `pxon ssh [name\|vmid]` | Open `root@<container-ip>` through the local SSH client. |
+| `pxon ssh [name\|vmid] [-- command...]` | Open an SSH session or run a remote command as `root`. |
 | `pxon delete [name\|vmid]` | Delete a managed container and optionally clean SSH host keys. |
 | `pxon skills install` | Install the bundled PXON usage skill for AI agents. |
 

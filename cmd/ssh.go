@@ -15,10 +15,18 @@ import (
 )
 
 var sshCmd = &cobra.Command{
-	Use:   "ssh [name|vmid]",
-	Short: "Open an SSH session to a pxon-managed container",
-	Args:  cobra.MaximumNArgs(1),
+	Use:   "ssh [name|vmid] [-- command...]",
+	Short: "Connect to a pxon-managed container over SSH",
+	Example: `  pxon ssh web-01
+  pxon ssh web-01 -- uname -a
+  pxon ssh -- hostname`,
+	Args: validateSSHArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		invocation, err := parseSSHInvocation(args, cmd.ArgsLenAtDash())
+		if err != nil {
+			return err
+		}
+
 		cfg, err := currentConfig()
 		if err != nil {
 			return err
@@ -39,9 +47,8 @@ var sshCmd = &cobra.Command{
 		}
 
 		var target proxmox.Container
-		if len(args) == 1 {
-			name := strings.TrimSpace(args[0])
-			match, err := findContainer(containers, name)
+		if invocation.identifier != "" {
+			match, err := findContainer(containers, invocation.identifier)
 			if err != nil {
 				return err
 			}
@@ -59,8 +66,51 @@ var sshCmd = &cobra.Command{
 			return fmt.Errorf("container %s has no configured IP address", target.Name)
 		}
 
-		return runSSH(ip)
+		return runSSH(ip, invocation.remoteCommand)
 	},
+}
+
+type sshInvocation struct {
+	identifier    string
+	remoteCommand []string
+}
+
+func validateSSHArgs(cmd *cobra.Command, args []string) error {
+	_, err := parseSSHInvocation(args, cmd.ArgsLenAtDash())
+	return err
+}
+
+func parseSSHInvocation(args []string, argsLenAtDash int) (sshInvocation, error) {
+	targetArgs := args
+	invocation := sshInvocation{}
+
+	if argsLenAtDash >= 0 {
+		if argsLenAtDash > len(args) {
+			return sshInvocation{}, fmt.Errorf("invalid argument separator position")
+		}
+
+		targetArgs = args[:argsLenAtDash]
+		invocation.remoteCommand = append([]string(nil), args[argsLenAtDash:]...)
+		if len(invocation.remoteCommand) == 0 || strings.TrimSpace(invocation.remoteCommand[0]) == "" {
+			return sshInvocation{}, fmt.Errorf("remote command is required after --")
+		}
+	}
+
+	if len(targetArgs) > 1 {
+		if argsLenAtDash < 0 {
+			return sshInvocation{}, fmt.Errorf("remote command arguments must follow --")
+		}
+		return sshInvocation{}, fmt.Errorf("accepts at most one container name or VMID before --")
+	}
+
+	if len(targetArgs) == 1 {
+		invocation.identifier = strings.TrimSpace(targetArgs[0])
+		if invocation.identifier == "" {
+			return sshInvocation{}, fmt.Errorf("container name or VMID is required")
+		}
+	}
+
+	return invocation, nil
 }
 
 func init() {
@@ -124,12 +174,18 @@ func pickContainer(containers []proxmox.Container) (proxmox.Container, error) {
 	return proxmox.Container{}, fmt.Errorf("invalid selection")
 }
 
-func runSSH(ip string) error {
+func runSSH(ip string, remoteCommand []string) error {
 	path, err := exec.LookPath("ssh")
 	if err != nil {
 		return fmt.Errorf("ssh command not found: %w", err)
 	}
 
-	args := []string{"ssh", fmt.Sprintf("root@%s", ip)}
+	args := sshCommandArgs(ip, remoteCommand)
 	return syscall.Exec(path, args, os.Environ())
+}
+
+func sshCommandArgs(ip string, remoteCommand []string) []string {
+	args := make([]string, 0, 2+len(remoteCommand))
+	args = append(args, "ssh", fmt.Sprintf("root@%s", ip))
+	return append(args, remoteCommand...)
 }
