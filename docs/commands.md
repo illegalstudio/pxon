@@ -8,6 +8,26 @@
 
 Commands that produce structured pxon output use `--json` on standard output. Progress output is suppressed or redirected away from standard output where implemented.
 
+## `pxon skills install`
+
+```text
+pxon skills install [--force]
+```
+
+Opens a multi-select menu and installs the bundled PXON usage skill in one or both supported user locations:
+
+- `~/.agents/skills/pxon`
+- `~/.claude/skills/pxon`
+
+Both destinations are selected by default. Use space to toggle the current option and enter to confirm. The skill covers safe configuration, inspection, creation, SSH access, deletion, secret handling, and JSON automation.
+
+The command is idempotent when an installed skill matches the bundled version. It automatically updates a previously installed skill when its checksum proves that it has not been modified. It refuses to overwrite unmanaged or locally changed files unless `--force` is supplied. With `--json`, it still shows the interactive destination menu, then returns the skill name and an `installations` array containing each selected path and one of these statuses:
+
+- `installed`
+- `up-to-date`
+- `updated`
+- `replaced`
+
 ## `pxon config`
 
 ```text

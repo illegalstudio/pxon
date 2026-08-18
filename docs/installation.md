@@ -39,6 +39,27 @@ brew upgrade pxon
 
 The formula supports Apple Silicon and Intel macOS, plus ARM64 and AMD64 Linux.
 
+## AI agent skill
+
+PXON includes an Agent Skills-compatible skill that teaches AI agents how to configure and operate the CLI safely. Install it for the current user after installing or upgrading PXON:
+
+```sh
+pxon skills install
+```
+
+The command opens a multi-select menu with both destinations selected by default:
+
+- `~/.agents/skills/pxon` for Codex and compatible Agent Skills hosts;
+- `~/.claude/skills/pxon` for Claude Code.
+
+Use space to toggle a destination and enter to confirm. Running the command again is safe: PXON automatically updates a previously installed, unmodified skill while protecting local changes independently in each destination. If a selected directory contains a different or locally modified skill, PXON leaves it untouched and reports an error. Replace selected conflicting copies explicitly with:
+
+```sh
+pxon skills install --force
+```
+
+Restart an AI agent if it does not detect the newly installed skill automatically.
+
 ## Build from source
 
 Clone the repository and compile the binary:

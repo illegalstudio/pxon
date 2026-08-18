@@ -27,6 +27,7 @@
 - Opens an SSH session by container name or VMID.
 - Deletes managed containers with explicit confirmation and optional SSH `known_hosts` cleanup.
 - Supports JSON output for scripting and automation.
+- Installs a bundled AI agent skill that teaches agents how to operate pxon safely.
 
 ## Requirements
 
@@ -42,6 +43,7 @@ Install pxon with Homebrew:
 
 ```sh
 brew install illegalstudio/tap/pxon
+pxon skills install
 ```
 
 Or build pxon from source:
@@ -89,6 +91,7 @@ For a non-interactive deletion:
 | `pxon list` | List pxon-managed containers. |
 | `pxon ssh [name\|vmid]` | Open `root@<container-ip>` through the local SSH client. |
 | `pxon delete [name\|vmid]` | Delete a managed container and optionally clean SSH host keys. |
+| `pxon skills install` | Install the bundled PXON usage skill for AI agents. |
 
 Run `pxon <command> --help` for the complete flag reference.
 

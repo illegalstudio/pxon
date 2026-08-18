@@ -1,0 +1,4 @@
+interface:
+  display_name: "PXON"
+  short_description: "Operate PXON-managed Proxmox containers safely"
+  default_prompt: "Use $pxon to inspect and manage my PXON containers safely."

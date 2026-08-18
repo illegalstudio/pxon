@@ -34,3 +34,57 @@ func TestSelectModelTabNavigation(t *testing.T) {
 		})
 	}
 }
+
+func TestMultiSelectModelTogglesOptions(t *testing.T) {
+	model := multiSelectModel{
+		options:  []string{"~/.agents/skills", "~/.claude/skills"},
+		selected: map[int]bool{0: true, 1: true},
+	}
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace, Runes: []rune(" ")})
+	got := updated.(multiSelectModel)
+	if got.selected[0] {
+		t.Fatal("first option remained selected after space")
+	}
+	if !got.selected[1] {
+		t.Fatal("second option was unexpectedly deselected")
+	}
+
+	updated, _ = got.Update(tea.KeyMsg{Type: tea.KeyDown})
+	got = updated.(multiSelectModel)
+	if got.cursor != 1 {
+		t.Fatalf("cursor = %d, want 1", got.cursor)
+	}
+}
+
+func TestMultiSelectModelRequiresSelection(t *testing.T) {
+	model := multiSelectModel{options: []string{"~/.agents/skills", "~/.claude/skills"}}
+
+	updated, command := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	got := updated.(multiSelectModel)
+	if command != nil {
+		t.Fatal("empty selection unexpectedly quit")
+	}
+	if got.done {
+		t.Fatal("empty selection was accepted")
+	}
+	if got.errMsg == "" {
+		t.Fatal("empty selection did not report an error")
+	}
+}
+
+func TestMultiSelectModelAcceptsSelection(t *testing.T) {
+	model := multiSelectModel{
+		options:  []string{"~/.agents/skills", "~/.claude/skills"},
+		selected: map[int]bool{0: true},
+	}
+
+	updated, command := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	got := updated.(multiSelectModel)
+	if command == nil {
+		t.Fatal("selected options did not quit")
+	}
+	if !got.done {
+		t.Fatal("selected options were not accepted")
+	}
+}

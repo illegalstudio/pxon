@@ -60,8 +60,16 @@ class Pxon < Formula
     bin.install "pxon"
   end
 
+  def caveats
+    <<~EOS
+      Install the bundled PXON skill for AI agents with:
+        pxon skills install
+    EOS
+  end
+
   test do
     assert_match "pxon v#{version}", shell_output("#{bin}/pxon --version")
+    assert_match "skills", shell_output("#{bin}/pxon --help")
   end
 end
 EOF
