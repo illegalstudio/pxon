@@ -120,3 +120,7 @@ go vet ./...
 ```
 
 The module currently has no generated code. Format changed Go files with `gofmt`.
+
+## License
+
+pxon is available under the [MIT License](LICENSE).
