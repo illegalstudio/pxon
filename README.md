@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/logo-mark.png" alt="pxon logo" width="130">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-mark-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-mark.png">
+    <img src="assets/logo-mark.png" alt="pxon logo" width="130">
+  </picture>
 </p>
 
 <h1 align="center">pxon</h1>
