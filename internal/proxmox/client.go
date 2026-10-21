@@ -35,6 +35,18 @@ type StoragesResponse struct {
 	Data []Storage `json:"data"`
 }
 
+type StorageResourcesResponse struct {
+	Data []StorageResource `json:"data"`
+}
+
+type StorageResource struct {
+	Node    string `json:"node"`
+	Storage string `json:"storage"`
+	Type    string `json:"type"`
+	Status  string `json:"status"`
+	Content string `json:"content"`
+}
+
 type NetworksResponse struct {
 	Data []NetworkInterface `json:"data"`
 }
@@ -104,7 +116,10 @@ type LXCConfigResponse struct {
 }
 
 type LXCConfig struct {
-	Net0 string `json:"net0"`
+	Net0        string   `json:"net0"`
+	RootFS      string   `json:"rootfs"`
+	Template    int      `json:"template"`
+	NetworkKeys []string `json:"-"`
 }
 
 type Template struct {
@@ -360,9 +375,11 @@ func (c *Client) ListBridges(node string) ([]string, error) {
 }
 
 func (c *Client) ListTemplates(node string) ([]Template, error) {
+	// Node storage status actively probes mounts, which can block on offline NFS.
+	// Cluster resources use the status already collected by pvestatd.
 	req, err := c.newRequest(
 		http.MethodGet,
-		fmt.Sprintf("%s/nodes/%s/storage", c.endpoint, url.PathEscape(node)),
+		c.endpoint+"/cluster/resources?type=storage",
 		nil,
 	)
 	if err != nil {
@@ -384,14 +401,14 @@ func (c *Client) ListTemplates(node string) ([]Template, error) {
 		return nil, fmt.Errorf("Proxmox API returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
-	var storagesResp StoragesResponse
+	var storagesResp StorageResourcesResponse
 	if err := json.Unmarshal(body, &storagesResp); err != nil {
 		return nil, fmt.Errorf("decode Proxmox response: %w", err)
 	}
 
 	templates := make([]Template, 0)
 	for _, storage := range storagesResp.Data {
-		if storage.Enabled != 1 || storage.Active != 1 {
+		if storage.Type != "storage" || storage.Node != node || storage.Status != "available" {
 			continue
 		}
 
@@ -399,7 +416,7 @@ func (c *Client) ListTemplates(node string) ([]Template, error) {
 			continue
 		}
 
-		content, err := c.StorageContent(node, storage.Storage)
+		content, err := c.storageContent(node, storage.Storage, "vztmpl")
 		if err != nil {
 			return nil, err
 		}
@@ -864,7 +881,7 @@ func (c *Client) ValidateTemplateExists(node, ostemplate string) error {
 		return fmt.Errorf("invalid template reference %q: expected storage:vztmpl/...", ostemplate)
 	}
 
-	content, err := c.StorageContent(node, storage)
+	content, err := c.storageContent(node, storage, "vztmpl")
 	if err != nil {
 		return err
 	}
@@ -879,9 +896,17 @@ func (c *Client) ValidateTemplateExists(node, ostemplate string) error {
 }
 
 func (c *Client) StorageContent(node, storage string) ([]StorageVolume, error) {
+	return c.storageContent(node, storage, "")
+}
+
+func (c *Client) storageContent(node, storage, contentType string) ([]StorageVolume, error) {
+	endpoint := fmt.Sprintf("%s/nodes/%s/storage/%s/content", c.endpoint, url.PathEscape(node), url.PathEscape(storage))
+	if contentType != "" {
+		endpoint += "?content=" + url.QueryEscape(contentType)
+	}
 	req, err := c.newRequest(
 		http.MethodGet,
-		fmt.Sprintf("%s/nodes/%s/storage/%s/content", c.endpoint, url.PathEscape(node), url.PathEscape(storage)),
+		endpoint,
 		nil,
 	)
 	if err != nil {

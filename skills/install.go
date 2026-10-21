@@ -34,6 +34,7 @@ type installMarker struct {
 
 type installedState struct {
 	exists            bool
+	isDir             bool
 	current           bool
 	markerCurrent     bool
 	managedUnmodified bool
@@ -113,6 +114,7 @@ func inspectInstalledSkill(destination, bundledDigest string) (installedState, e
 	if !info.IsDir() {
 		return state, nil
 	}
+	state.isDir = true
 
 	installedDigest, err := digestInstalledSkill(destination)
 	if err != nil {

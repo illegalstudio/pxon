@@ -8,16 +8,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"pxon/internal/network"
 	"pxon/internal/proxmox"
 	"pxon/internal/sshkey"
 	"pxon/internal/ui"
+	"pxon/internal/wizard"
 )
 
 type createOptions struct {
 	node         string
 	vmid         int
 	template     string
+	image        string
+	selectImage  bool
 	rootfs       string
 	storage      string
 	diskSize     string
@@ -65,6 +67,14 @@ var createCmd = &cobra.Command{
 			}
 		}
 
+		image, err := selectCreateImage(cmd, client, node, cfg.DefaultImage)
+		if err != nil {
+			return err
+		}
+		if image.Kind == proxmox.ImageTemplate {
+			return createFromContainerImage(cmd, client, cfg, image, vmid, strings.TrimSpace(args[0]))
+		}
+
 		rootfs := strings.TrimSpace(createOpts.rootfs)
 		if rootfs == "" {
 			storage := strings.TrimSpace(createOpts.storage)
@@ -83,10 +93,7 @@ var createCmd = &cobra.Command{
 			}
 		}
 
-		template := strings.TrimSpace(createOpts.template)
-		if template == "" {
-			template = strings.TrimSpace(cfg.DefaultImage)
-		}
+		template := image.ID
 
 		password := createOpts.password
 		if password == "" {
@@ -106,21 +113,9 @@ var createCmd = &cobra.Command{
 			}
 		}
 
-		net0 := strings.TrimSpace(createOpts.net0)
-		if net0 == "" {
-			if strings.TrimSpace(cfg.DefaultNet0) != "" {
-				net0 = strings.TrimSpace(cfg.DefaultNet0)
-			} else {
-				usedIPs, err := client.UsedIPv4Addresses(node)
-				if err != nil {
-					return err
-				}
-
-				net0, err = network.BuildNet0(cfg.Network, usedIPs)
-				if err != nil {
-					return fmt.Errorf("missing network configuration: provide --net0 or configure networking with `pxon config`: %w", err)
-				}
-			}
+		net0, err := resolveCreateNetwork(client, cfg, node)
+		if err != nil {
+			return err
 		}
 
 		req := proxmox.CreateContainerRequest{
@@ -156,7 +151,10 @@ var createCmd = &cobra.Command{
 		}
 
 		if jsonEnabled() {
-			return ui.WriteJSON(cmd.OutOrStdout(), taskStatus)
+			return ui.WriteJSON(cmd.OutOrStdout(), containerCreateResult{
+				TaskStatus: taskStatus, Hostname: req.Hostname, VMID: vmid, Node: node,
+				Image: image, RootFS: rootfs, Net0: net0, Stage: "completed",
+			})
 		}
 
 		ui.RenderCreateSummary(cmd.OutOrStdout(), ui.CreateSummary{
@@ -179,7 +177,9 @@ func init() {
 
 	createCmd.Flags().StringVar(&createOpts.node, "node", "", "Proxmox node on which to create the container")
 	createCmd.Flags().IntVar(&createOpts.vmid, "vmid", 0, "VMID to use; when omitted, request the next available ID")
-	createCmd.Flags().StringVar(&createOpts.template, "template", "", "Proxmox LXC template; when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.template, "template", "", "Image reference (alias for --image); when omitted, use the configured default")
+	createCmd.Flags().StringVar(&createOpts.image, "image", "", "Image reference from images list (storage:vztmpl/... or lxc:<vmid>)")
+	createCmd.Flags().BoolVar(&createOpts.selectImage, "select-image", false, "Choose an image interactively instead of using the configured default")
 	createCmd.Flags().StringVar(&createOpts.rootfs, "rootfs", "", "Complete Proxmox rootfs value, for example storage:8")
 	createCmd.Flags().StringVar(&createOpts.storage, "storage", "", "Storage for the rootfs disk; when omitted, use the configured default")
 	createCmd.Flags().StringVar(&createOpts.diskSize, "disk-size", "", "Rootfs disk size; when omitted, use the configured default")
@@ -192,6 +192,58 @@ func init() {
 	createCmd.Flags().BoolVar(&createOpts.start, "start", true, "Start the container after creation; use --start=false to leave it stopped")
 	createCmd.Flags().BoolVar(&createOpts.unprivileged, "unprivileged", true, "Create an unprivileged LXC container")
 	createCmd.Flags().StringSliceVar(&createOpts.tags, "tag", nil, "Additional tag to apply; the pxon tag is always added")
+}
+
+func selectCreateImage(cmd *cobra.Command, client *proxmox.Client, node, configured string) (proxmox.Image, error) {
+	if cmd.Flags().Changed("image") && cmd.Flags().Changed("template") {
+		return proxmox.Image{}, fmt.Errorf("use only one of --image and --template")
+	}
+	for flag, value := range map[string]string{"image": createOpts.image, "template": createOpts.template} {
+		if cmd.Flags().Changed(flag) && strings.TrimSpace(value) == "" {
+			return proxmox.Image{}, fmt.Errorf("--%s requires a non-empty image reference", flag)
+		}
+	}
+	if createOpts.selectImage {
+		if jsonEnabled() || cmd.Flags().Changed("image") || cmd.Flags().Changed("template") {
+			return proxmox.Image{}, fmt.Errorf("--select-image requires interactive output and cannot be combined with --image or --template; use images list --json and --image for automation")
+		}
+		images, err := client.ListImages(node)
+		if err != nil {
+			return proxmox.Image{}, err
+		}
+		if len(images) == 0 {
+			return proxmox.Image{}, fmt.Errorf("no images available on node %q", node)
+		}
+		labels := make([]string, len(images))
+		defaultIndex := 0
+		for i, image := range images {
+			labels[i] = fmt.Sprintf("%s (%s)", image.ID, image.Name)
+			if image.ID == configured {
+				defaultIndex = i
+			}
+		}
+		selected, err := wizard.Select("Select the container image:", labels, defaultIndex)
+		if err != nil {
+			return proxmox.Image{}, err
+		}
+		for i, label := range labels {
+			if label == selected {
+				return images[i], nil
+			}
+		}
+		return proxmox.Image{}, fmt.Errorf("no image selected")
+	}
+	reference := strings.TrimSpace(createOpts.image)
+	if reference == "" {
+		reference = strings.TrimSpace(createOpts.template)
+	}
+	if reference == "" {
+		reference = strings.TrimSpace(configured)
+	}
+	if reference == "" {
+		return proxmox.Image{}, fmt.Errorf("provide --image, use --select-image, or configure default_image; see pxon images list")
+	}
+	return client.ResolveImage(node, reference)
 }
 
 func waitForCreateTask(writer io.Writer, client *proxmox.Client, node, upid, hostname string, vmid int, shouldStart bool) (*proxmox.TaskStatus, error) {

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
-	"pxon/internal/ui"
 	"pxon/internal/wizard"
 	pxonskills "pxon/skills"
 )
@@ -17,11 +17,13 @@ type skillsInstallOptions struct {
 }
 
 type skillInstallTarget struct {
+	Key   string
 	Label string
 	Path  string
 }
 
 type skillInstallItem struct {
+	Target string                   `json:"target"`
 	Path   string                   `json:"path"`
 	Status pxonskills.InstallStatus `json:"status,omitempty"`
 	Error  string                   `json:"error,omitempty"`
@@ -50,23 +52,28 @@ var skillsInstallCmd = &cobra.Command{
 		}
 
 		targets := skillInstallTargets(home)
-		selectedLabels, err := wizard.MultiSelect(
-			"Select the AI agent skill destinations:",
-			targetLabels(targets),
-			[]int{0, 1},
-		)
+		requested, _ := cmd.Flags().GetStringArray("target")
+		if cmd.Flags().Changed("target") {
+			targets, err = filterSkillTargets(targets, requested)
+		} else if !jsonEnabled() {
+			var labels []string
+			labels, err = wizard.MultiSelect("Select the AI agent skill destinations:", targetLabels(targets), []int{0, 1})
+			if err != nil {
+				return fmt.Errorf("select skill destinations (use --target for non-interactive installation): %w", err)
+			}
+			targets = selectedTargets(targets, labels)
+		}
 		if err != nil {
 			return err
 		}
-
-		result, installErr := installSkillTargets(selectedTargets(targets, selectedLabels), skillsInstallOpts.force)
-		if jsonEnabled() {
-			if err := ui.WriteJSON(cmd.OutOrStdout(), result); err != nil {
-				return err
-			}
-			return installErr
+		if len(targets) == 0 {
+			return fmt.Errorf("no skill target selected")
 		}
 
+		result, installErr := installSkillTargets(targets, skillsInstallOpts.force)
+		if jsonEnabled() {
+			return writeJSONResult(cmd, result, installErr)
+		}
 		writeSkillsInstallResult(cmd, result)
 		return installErr
 	},
@@ -75,6 +82,7 @@ var skillsInstallCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(skillsCmd)
 	skillsCmd.AddCommand(skillsInstallCmd)
+	skillsInstallCmd.Flags().StringArray("target", nil, "Install only to this destination (agents, claude); repeatable")
 	skillsInstallCmd.Flags().BoolVar(
 		&skillsInstallOpts.force,
 		"force",
@@ -85,8 +93,8 @@ func init() {
 
 func skillInstallTargets(home string) []skillInstallTarget {
 	return []skillInstallTarget{
-		{Label: "~/.agents/skills", Path: pxonskills.AgentSkillsInstallPath(home)},
-		{Label: "~/.claude/skills", Path: pxonskills.ClaudeSkillsInstallPath(home)},
+		{Key: "agents", Label: "~/.agents/skills", Path: pxonskills.AgentSkillsInstallPath(home)},
+		{Key: "claude", Label: "~/.claude/skills", Path: pxonskills.ClaudeSkillsInstallPath(home)},
 	}
 }
 
@@ -122,7 +130,7 @@ func installSkillTargets(targets []skillInstallTarget, force bool) (skillsInstal
 
 	for _, target := range targets {
 		status, err := pxonskills.Install(target.Path, force)
-		item := skillInstallItem{Path: target.Path, Status: status}
+		item := skillInstallItem{Target: target.Key, Path: target.Path, Status: status}
 		if err != nil {
 			item.Error = err.Error()
 			installErrors = append(installErrors, fmt.Errorf("%s: %w", target.Path, err))
@@ -131,6 +139,27 @@ func installSkillTargets(targets []skillInstallTarget, force bool) (skillsInstal
 	}
 
 	return result, errors.Join(installErrors...)
+}
+
+func filterSkillTargets(targets []skillInstallTarget, requested []string) ([]skillInstallTarget, error) {
+	if len(requested) == 0 {
+		return nil, fmt.Errorf("no skill target selected (valid targets: agents, claude)")
+	}
+	wanted := make(map[string]bool)
+	for _, key := range requested {
+		key = strings.ToLower(strings.TrimSpace(key))
+		if key != "agents" && key != "claude" {
+			return nil, fmt.Errorf("unknown skill target %q (valid targets: agents, claude); repeat --target for multiple destinations", key)
+		}
+		wanted[key] = true
+	}
+	selected := make([]skillInstallTarget, 0, len(wanted))
+	for _, target := range targets {
+		if wanted[target.Key] {
+			selected = append(selected, target)
+		}
+	}
+	return selected, nil
 }
 
 func writeSkillsInstallResult(cmd *cobra.Command, result skillsInstallResult) {

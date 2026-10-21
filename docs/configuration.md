@@ -29,7 +29,7 @@ The wizard:
 
 1. Chooses a Proxmox node.
 2. Detects storage that supports LXC root filesystems.
-3. Detects available LXC templates.
+3. Detects available LXC archives and pxon-managed container templates.
 4. Requests a default disk size and root password.
 5. Offers SSH public keys found under `~/.ssh/*.pub`.
 6. Configures DHCP or a static IPv4 pool.
@@ -51,6 +51,7 @@ default_disk_size: "8"
 default_password: replace-with-initial-root-password
 default_ssh_public_key_path: ~/.ssh/id_ed25519.pub
 default_net0: ""
+suppress_skills_notice: false
 
 network:
   mode: pool
@@ -64,6 +65,8 @@ network:
 
 The values above are examples. Use storage IDs, templates, addresses, and credentials from your own Proxmox environment.
 
+`default_image` accepts an archive volume ID or a managed container template reference such as `lxc:101`, as returned by `pxon images list`. Override it with `create --image`, `--template`, or `--select-image`. Container templates preserve their disk size, credentials, and privilege mode; the corresponding archive defaults are ignored for clones. Memory, cores, and swap are inherited unless their flags are explicitly supplied. The configured storage and network still apply.
+
 ## All environment variables
 
 | Environment variable | YAML key |
@@ -72,6 +75,7 @@ The values above are examples. Use storage IDs, templates, addresses, and creden
 | `PXON_TOKEN_ID` | `token_id` |
 | `PXON_TOKEN_SECRET` | `token_secret` |
 | `PXON_INSECURE` | `insecure` |
+| `PXON_SUPPRESS_SKILLS_NOTICE` | `suppress_skills_notice` |
 | `PXON_DEFAULT_STORAGE` | `default_storage` |
 | `PXON_DEFAULT_IMAGE` | `default_image` |
 | `PXON_DEFAULT_DISK_SIZE` | `default_disk_size` |
@@ -99,6 +103,7 @@ Important cases:
 - `--rootfs` overrides `--storage`, `--disk-size`, and their defaults.
 - `--net0` overrides `default_net0` and the structured `network` section.
 - `--ssh-key` overrides `default_ssh_public_key_path`.
+- `--image` and its alias `--template` override `default_image`; `--select-image` opens a picker for human-readable output.
 - `--node` overrides automatic node selection.
 - `--vmid` overrides the next ID returned by Proxmox.
 

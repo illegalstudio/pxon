@@ -77,7 +77,7 @@ func runConfigWizard(cmd *cobra.Command) error {
 		}
 	}
 
-	templates, err := client.ListTemplates(node)
+	templates, err := client.ListImages(node)
 	if err != nil {
 		return err
 	}
@@ -86,14 +86,14 @@ func runConfigWizard(cmd *cobra.Command) error {
 	}
 
 	if len(templates) == 1 {
-		currentCfg.DefaultImage = templates[0].VolID
+		currentCfg.DefaultImage = templates[0].ID
 		fmt.Fprintf(writer, "Single available template detected: %s\n", currentCfg.DefaultImage)
 	} else {
 		options := make([]string, 0, len(templates))
 		defaultIndex := 0
 		for i, t := range templates {
-			options = append(options, t.VolID)
-			if t.VolID == currentCfg.DefaultImage {
+			options = append(options, t.ID)
+			if t.ID == currentCfg.DefaultImage {
 				defaultIndex = i
 			}
 		}

@@ -39,6 +39,14 @@ brew upgrade pxon
 
 The formula supports Apple Silicon and Intel macOS, plus ARM64 and AMD64 Linux.
 
+## mise
+
+Install the latest release globally using the [GitHub backend](https://mise.jdx.dev/dev-tools/backends/github.html):
+
+```sh
+mise use -g github:illegalstudio/pxon@latest
+```
+
 ## AI agent skill
 
 PXON includes an Agent Skills-compatible skill that teaches AI agents how to configure and operate the CLI safely. Install it for the current user after installing or upgrading PXON:
@@ -52,11 +60,22 @@ The command opens a multi-select menu with both destinations selected by default
 - `~/.agents/skills/pxon` for Codex and compatible Agent Skills hosts;
 - `~/.claude/skills/pxon` for Claude Code.
 
-Use space to toggle a destination and enter to confirm. Running the command again is safe: PXON automatically updates a previously installed, unmodified skill while protecting local changes independently in each destination. If a selected directory contains a different or locally modified skill, PXON leaves it untouched and reports an error. Replace selected conflicting copies explicitly with:
+Use space to toggle a destination and enter to confirm. Select destinations without opening a menu with repeatable `--target` flags:
+
+```sh
+pxon skills install --target agents --target claude
+pxon skills verify --json
+```
+
+`skills install --json` installs both destinations without prompting unless `--target` narrows the selection. `skills verify` is read-only and reports every supported destination by default. Missing installations are reported as `not-installed`; outdated or modified installations cause a non-zero exit status while preserving the full JSON verification report.
+
+Running the install command again is safe: PXON automatically updates a previously installed, unmodified skill while protecting local changes independently in each destination. If a selected directory contains a different or locally modified skill, PXON leaves it untouched and reports an error. Replace selected conflicting copies explicitly with:
 
 ```sh
 pxon skills install --force
 ```
+
+After human-readable commands, PXON reminds you when an installed skill differs from the running binary. Set `suppress_skills_notice: true` in `~/.config/pxon/config.yaml` or `PXON_SUPPRESS_SKILLS_NOTICE=true` to disable this reminder. JSON, SSH, completion, and skill-management commands do not print it.
 
 Restart an AI agent if it does not detect the newly installed skill automatically.
 

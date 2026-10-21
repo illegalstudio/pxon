@@ -68,8 +68,12 @@ func RenderManagedContainers(writer io.Writer, containers []proxmox.Container) {
 
 	t := table.NewWriter()
 	t.SetOutputMirror(writer)
-	t.AppendHeader(table.Row{"VMID", "Name", "Status", "IP", "Node", "Uptime", "Mem", "Disk"})
+	t.AppendHeader(table.Row{"VMID", "Name", "Type", "Status", "IP", "Node", "Uptime", "Mem", "Disk"})
 	for _, container := range containers {
+		kind := "container"
+		if container.Template == 1 {
+			kind = "template"
+		}
 		ip := container.IP
 		if ip == "" {
 			ip = "-"
@@ -77,6 +81,7 @@ func RenderManagedContainers(writer io.Writer, containers []proxmox.Container) {
 		t.AppendRow(table.Row{
 			container.VMID,
 			container.Name,
+			kind,
 			container.Status,
 			ip,
 			container.Node,
@@ -88,6 +93,22 @@ func RenderManagedContainers(writer io.Writer, containers []proxmox.Container) {
 
 	t.SetStyle(table.StyleRounded)
 	fmt.Fprintln(writer, titleStyle.Render("Managed Containers"))
+	t.Render()
+}
+
+func RenderImages(writer io.Writer, images []proxmox.Image) {
+	fmt.Fprintln(writer, titleStyle.Render("Available Images"))
+	if len(images) == 0 {
+		fmt.Fprintln(writer, mutedStyle.Render("No images found on this node."))
+		return
+	}
+	t := table.NewWriter()
+	t.SetOutputMirror(writer)
+	t.AppendHeader(table.Row{"Image", "Name", "Kind", "Node", "Storage"})
+	for _, image := range images {
+		t.AppendRow(table.Row{image.ID, image.Name, image.Kind, image.Node, image.Storage})
+	}
+	t.SetStyle(table.StyleRounded)
 	t.Render()
 }
 

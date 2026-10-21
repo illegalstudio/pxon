@@ -17,6 +17,7 @@ type Config struct {
 	TokenID                 string        `mapstructure:"token_id"`
 	TokenSecret             string        `mapstructure:"token_secret"`
 	Insecure                bool          `mapstructure:"insecure"`
+	SuppressSkillsNotice    bool          `mapstructure:"suppress_skills_notice"`
 	DefaultStorage          string        `mapstructure:"default_storage"`
 	DefaultImage            string        `mapstructure:"default_image"`
 	DefaultDiskSize         string        `mapstructure:"default_disk_size"`
@@ -88,6 +89,7 @@ func bindEnv(v *viper.Viper) error {
 		"token_id",
 		"token_secret",
 		"insecure",
+		"suppress_skills_notice",
 		"default_storage",
 		"default_image",
 		"default_disk_size",
@@ -129,6 +131,7 @@ func Save(cfg *Config) error {
 	v.Set("token_id", cfg.TokenID)
 	v.Set("token_secret", cfg.TokenSecret)
 	v.Set("insecure", cfg.Insecure)
+	v.Set("suppress_skills_notice", cfg.SuppressSkillsNotice)
 	v.Set("default_storage", cfg.DefaultStorage)
 	v.Set("default_image", cfg.DefaultImage)
 	v.Set("default_disk_size", cfg.DefaultDiskSize)

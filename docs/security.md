@@ -10,6 +10,7 @@ Depending on the command, pxon needs to:
 - read nodes, storage, storage content, and network bridges;
 - request the next VMID;
 - create or delete LXC containers;
+- clone configured LXC containers, update the copied configuration, convert copies into templates, and start clones;
 - read Proxmox task status and logs.
 
 Keep read-only and destructive automation separate when your Proxmox permission model allows it.
@@ -48,6 +49,10 @@ Passing `--password` can expose a secret through shell history or process inspec
 ## Managed scope
 
 `list`, `ssh`, and `delete` only operate on LXC containers carrying the exact `pxon` tag. This boundary reduces accidental interaction with unrelated guests, but it is not an authorization boundary: Proxmox API permissions remain the source of access control.
+
+Image creation requires a managed source. Reusable container images must be managed templates on the chosen node; standard LXC archives can be read from any available template storage. A template is a full copy with a separate VMID, and the source is never stopped or converted by PXON. Copying a running source requires an existing snapshot.
+
+Container images preserve application data, credentials, SSH host keys, machine identifiers, and other files. Prepare a reusable source deliberately and regenerate identities as needed when provisioning instances. PXON removes inherited network interfaces from saved images and assigns a new network configuration before starting clones. It does not sanitize files inside the filesystem. Clones inherit root credentials and privilege mode rather than applying archive creation defaults.
 
 ## Deletion
 

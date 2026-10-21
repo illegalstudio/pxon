@@ -26,12 +26,15 @@
 
 - Creates unprivileged LXC containers through the Proxmox VE API.
 - Discovers storage, templates, bridges, and network defaults interactively.
+- Lists available images and creates reusable templates from configured containers.
+- Creates containers from an explicit image or an interactive image selector.
 - Assigns the next free address from a configured static IPv4 pool.
 - Lists only containers carrying the `pxon` tag.
 - Opens an SSH session by container name or VMID.
 - Deletes managed containers with explicit confirmation and optional SSH `known_hosts` cleanup.
 - Supports JSON output for scripting and automation.
 - Installs a bundled AI agent skill that teaches agents how to operate pxon safely.
+- Verifies installed agent skills and reports outdated or locally modified copies.
 
 ## Requirements
 
@@ -86,6 +89,26 @@ Create and manage a container:
 ./bin/pxon delete app-01
 ```
 
+List images, save a stopped, configured container named `configured-app` as a reusable image, and create a new container from it:
+
+```sh
+pxon images list
+pxon images create configured-app app-image
+pxon create app-02 --image lxc:101
+pxon create app-03 --select-image
+```
+
+Use the image ID returned by `images create` in place of `lxc:101`. The source must be stopped, or you can pass `--snapshot <existing-snapshot>` to copy a running source. The image is a full copy with its own VMID; the original is preserved. Containers cloned from it inherit disk size, credentials, and resource settings, and receive a fresh pxon network configuration.
+
+Check the installed agent skills after upgrading pxon:
+
+```sh
+pxon skills verify
+pxon skills install --target agents --target claude
+```
+
+`--target` selects destinations without a prompt. `skills install --json` also runs without prompting. Verification reports `not-installed`, `up-to-date`, `outdated`, or `modified`, and fails when an installed copy is stale. pxon prints stale-skill reminders after human-readable commands; set `suppress_skills_notice: true` in the configuration to silence them.
+
 For a non-interactive deletion:
 
 ```sh
@@ -100,10 +123,13 @@ For a non-interactive deletion:
 |---|---|
 | `pxon config` | Discover and save default storage, template, SSH key, and network settings. |
 | `pxon create <hostname>` | Create a tagged LXC container and wait for the Proxmox task. |
+| `pxon images list` | List LXC archives and managed container templates available on a node. |
+| `pxon images create <source> <name>` | Save a full copy of a configured managed container as a template. |
 | `pxon list` | List pxon-managed containers. |
 | `pxon ssh [name\|vmid] [-- command...]` | Open an SSH session or run a remote command as `root`. |
 | `pxon delete [name\|vmid]` | Delete a managed container and optionally clean SSH host keys. |
 | `pxon skills install` | Install the bundled PXON usage skill for AI agents. |
+| `pxon skills verify` | Compare installed skills with the version bundled in pxon. |
 
 Run `pxon <command> --help` for the complete flag reference.
 

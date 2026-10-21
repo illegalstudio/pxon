@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"pxon/internal/config"
+	"pxon/internal/ui"
 	"pxon/internal/version"
 )
 
@@ -22,7 +25,19 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	command, err := rootCmd.ExecuteC()
+	if err != nil && jsonEnabled() {
+		var reported reportedError
+		if !errors.As(err, &reported) {
+			if writeErr := ui.WriteJSON(rootCmd.OutOrStdout(), map[string]string{"error": err.Error()}); writeErr != nil {
+				return errors.Join(err, writeErr)
+			}
+		}
+	}
+	if err == nil {
+		maybeNoticeStaleSkill(command)
+	}
+	return err
 }
 
 func init() {

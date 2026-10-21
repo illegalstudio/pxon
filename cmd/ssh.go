@@ -54,11 +54,24 @@ var sshCmd = &cobra.Command{
 			}
 			target = match
 		} else {
-			match, err := pickContainer(containers)
+			available := make([]proxmox.Container, 0, len(containers))
+			for _, container := range containers {
+				if container.Template != 1 {
+					available = append(available, container)
+				}
+			}
+			if len(available) == 0 {
+				return fmt.Errorf("no pxon-managed containers available for SSH; create a container from a template first")
+			}
+			match, err := pickContainer(available)
 			if err != nil {
 				return err
 			}
 			target = match
+		}
+
+		if target.Template == 1 {
+			return fmt.Errorf("%s (VMID %d) is a template; create a container with --image lxc:%d before connecting", target.Name, target.VMID, target.VMID)
 		}
 
 		ip := strings.TrimSpace(target.IP)
