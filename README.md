@@ -50,6 +50,13 @@ brew install illegalstudio/tap/pxon
 pxon skills install
 ```
 
+Or install the latest release with [mise](https://mise.jdx.dev/dev-tools/backends/github.html):
+
+```sh
+mise use -g github:illegalstudio/pxon@latest
+pxon skills install
+```
+
 Or build pxon from source:
 
 ```sh
