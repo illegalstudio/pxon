@@ -146,6 +146,24 @@ pxon create batch-01 --json
 pxon create batch-02 --image lxc:900 --json
 ```
 
+## `pxon status`, `pxon start`, and `pxon stop`
+
+```sh
+pxon status app-01 --json
+pxon start 104 --timeout 4m --json
+pxon stop app-01 --shutdown-timeout 60s --timeout 2m --json
+```
+
+These commands require exactly one managed container name or VMID and never open a selector. They reject templates and guests without the exact `pxon` tag. No SSH connection or static IP is required. `status` reads `/status/current` rather than relying on the periodically refreshed cluster resource state.
+
+`start` does nothing when the guest is already running. `stop` does nothing when it is already stopped. Otherwise they submit a task, wait for an `OK` exit, and verify the final container state. `stop` uses Proxmox clean shutdown with `forceStop=0`: it preserves the disk and never falls back to a forced stop.
+
+`--timeout` is a positive Go duration, default `2m`, covering managed-container lookup, HTTP requests, task polling, and final-state verification. `stop` also accepts `--shutdown-timeout`, default `1m`, for the clean shutdown timeout on Proxmox. Fractional seconds are rounded up for that API parameter. The overall deadline still takes precedence over local waiting.
+
+JSON reports `operation`, `name`, `vmid`, `node`, the configured `ip` when available, the last observed `status` and `uptime`, and `changed`. `changed` is true when Proxmox accepted a mutating task, not a guarantee that the task succeeded. Accepted tasks also include `upid` and the last task response when available. Errors after target resolution preserve those fields and add `error`, with a non-zero exit status and only one JSON document.
+
+A local timeout cancels HTTP requests and polling, not the task already running on Proxmox. Inspect the returned UPID and actual guest state before retrying. The CLI does not roll back power changes or report success based only on task submission.
+
 ## `pxon list`
 
 ```text
