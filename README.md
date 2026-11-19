@@ -30,6 +30,7 @@
 - Creates containers from an explicit image or an interactive image selector.
 - Assigns the next free address from a configured static IPv4 pool.
 - Lists only containers carrying the `pxon` tag.
+- Reads current state, starts containers, and shuts them down cleanly with repeatable commands and configurable deadlines.
 - Opens an SSH session by container name or VMID.
 - Deletes managed containers with explicit confirmation and optional SSH `known_hosts` cleanup.
 - Supports JSON output for scripting and automation.
@@ -84,6 +85,9 @@ Create and manage a container:
 ```sh
 ./bin/pxon create app-01
 ./bin/pxon list
+./bin/pxon status app-01
+./bin/pxon stop app-01
+./bin/pxon start app-01
 ./bin/pxon ssh app-01
 ./bin/pxon ssh app-01 -- uname -a
 ./bin/pxon delete app-01
@@ -126,6 +130,9 @@ For a non-interactive deletion:
 | `pxon images list` | List LXC archives and managed container templates available on a node. |
 | `pxon images create <source> <name>` | Save a full copy of a configured managed container as a template. |
 | `pxon list` | List pxon-managed containers. |
+| `pxon status <name\|vmid>` | Read the current state of a managed container. |
+| `pxon start <name\|vmid>` | Start a stopped managed container and wait for the task. |
+| `pxon stop <name\|vmid>` | Cleanly shut down a running managed container, preserving its disk. |
 | `pxon ssh [name\|vmid] [-- command...]` | Open an SSH session or run a remote command as `root`. |
 | `pxon delete [name\|vmid]` | Delete a managed container and optionally clean SSH host keys. |
 | `pxon skills install` | Install the bundled PXON usage skill for AI agents. |
@@ -135,7 +142,7 @@ Run `pxon <command> --help` for the complete flag reference.
 
 ## Managed-container boundary
 
-Every container created by pxon receives the `pxon` tag. The `list`, `ssh`, and `delete` commands only operate on LXC containers with that exact tag, so unrelated Proxmox guests remain outside the normal pxon workflow.
+Every container created by pxon receives the `pxon` tag. The `list`, `status`, `start`, `stop`, `ssh`, and `delete` commands only operate on LXC containers with that exact tag, so unrelated Proxmox guests remain outside the normal pxon workflow.
 
 ## Documentation
 

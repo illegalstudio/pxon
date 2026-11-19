@@ -148,6 +148,9 @@ func (c *Client) ConvertToTemplate(node string, vmid int) error {
 }
 
 func (c *Client) StartContainer(node string, vmid int) (string, error) {
+	if err := validateContainerTarget(node, vmid); err != nil {
+		return "", err
+	}
 	var response TaskUPIDResponse
 	if err := c.imageRequest(http.MethodPost, containerPath(node, vmid)+"/status/start", nil, &response); err != nil {
 		return "", err

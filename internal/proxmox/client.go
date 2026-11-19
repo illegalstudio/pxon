@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,21 @@ type Client struct {
 	endpoint   string
 	token      string
 	httpClient *http.Client
+	ctx        context.Context
+}
+
+// WithContext returns a copy whose requests and task polling share a deadline.
+func (c *Client) WithContext(ctx context.Context) *Client {
+	copy := *c
+	copy.ctx = ctx
+	return &copy
+}
+
+func (c *Client) requestContext() context.Context {
+	if c.ctx != nil {
+		return c.ctx
+	}
+	return context.Background()
 }
 
 // ManagedTag is the Proxmox tag applied to LXC containers created by pxon.
@@ -771,7 +787,7 @@ func (r CreateContainerRequest) Validate() error {
 }
 
 func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(c.requestContext(), method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -789,23 +805,30 @@ func (c *Client) WaitForTask(node, upid string, timeout time.Duration) (*TaskSta
 		return nil, fmt.Errorf("missing Proxmox task UPID")
 	}
 
-	deadline := time.Now().Add(timeout)
+	if timeout <= 0 {
+		return nil, fmt.Errorf("task timeout must be positive")
+	}
+	ctx, cancel := context.WithTimeout(c.requestContext(), timeout)
+	defer cancel()
+	client := c.WithContext(ctx)
+	var lastStatus *TaskStatus
 
 	for {
-		taskStatus, err := c.TaskStatus(node, upid)
+		taskStatus, err := client.TaskStatus(node, upid)
 		if err != nil {
-			return nil, err
+			return lastStatus, err
 		}
+		lastStatus = taskStatus
 
 		if taskStatus.Status == "stopped" {
 			return taskStatus, nil
 		}
 
-		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("timeout waiting for Proxmox task %s", upid)
+		select {
+		case <-ctx.Done():
+			return lastStatus, fmt.Errorf("waiting for Proxmox task %s: %w", upid, ctx.Err())
+		case <-time.After(2 * time.Second):
 		}
-
-		time.Sleep(2 * time.Second)
 	}
 }
 

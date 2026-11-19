@@ -10,6 +10,7 @@ Depending on the command, pxon needs to:
 - read nodes, storage, storage content, and network bridges;
 - request the next VMID;
 - create or delete LXC containers;
+- read current LXC status and start or cleanly shut down containers (`VM.Audit` and `VM.PowerMgmt`, respectively);
 - clone configured LXC containers, update the copied configuration, convert copies into templates, and start clones;
 - read Proxmox task status and logs.
 
@@ -48,7 +49,9 @@ Passing `--password` can expose a secret through shell history or process inspec
 
 ## Managed scope
 
-`list`, `ssh`, and `delete` only operate on LXC containers carrying the exact `pxon` tag. This boundary reduces accidental interaction with unrelated guests, but it is not an authorization boundary: Proxmox API permissions remain the source of access control.
+`list`, `status`, `start`, `stop`, `ssh`, and `delete` only operate on LXC containers carrying the exact `pxon` tag. This boundary reduces accidental interaction with unrelated guests, but it is not an authorization boundary: Proxmox API permissions remain the source of access control.
+
+Power commands reject templates and require an explicit target. They use current guest status to avoid repeating a power request that is already satisfied. `stop` requests clean shutdown without forced termination. A local timeout does not cancel an already accepted remote task; inspect the task and guest before retrying.
 
 Image creation requires a managed source. Reusable container images must be managed templates on the chosen node; standard LXC archives can be read from any available template storage. A template is a full copy with a separate VMID, and the source is never stopped or converted by PXON. Copying a running source requires an existing snapshot.
 
